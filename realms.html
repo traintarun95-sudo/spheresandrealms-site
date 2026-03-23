@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Realms — Spheres & Realms</title>
+<meta name="description" content="The Leaking Hero Tracker — an 8-day self-observation practice built on an original framework.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --sky: #b8daea; --sky-deep: #4a93b8;
+    --warm: #f8f4ef;
+    --ink: #1c1c1a; --ink-soft: #88887f;
+    --white: #fdfcfa;
+    --realms-bg: #0f0e0c; --realms-mid: #181512; --realms-accent: #c4a882; --realms-dim: #2e2820; --realms-soft: rgba(196,168,130,0.5);
+  }
+  html { scroll-behavior: smooth; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--realms-bg); color: var(--white); overflow-x: hidden; }
+
+  nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; padding: 1.3rem 4rem; display: flex; justify-content: space-between; align-items: center; background: rgba(15,14,12,0.92); backdrop-filter: blur(16px); border-bottom: 1px solid rgba(196,168,130,0.1); }
+  .nav-logo { font-family: 'Cormorant Garamond', serif; font-size: 1.05rem; font-weight: 400; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(253,252,250,0.6); text-decoration: none; transition: color 0.3s; }
+  .nav-logo:hover { color: var(--white); }
+  .nav-links { display: flex; gap: 2.5rem; list-style: none; align-items: center; }
+  .nav-links a { font-size: 0.74rem; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(253,252,250,0.35); text-decoration: none; transition: color 0.3s; }
+  .nav-links a:hover { color: var(--realms-accent); }
+  .nav-active { color: var(--realms-accent) !important; }
+  .nav-spheres { color: rgba(184,218,234,0.4) !important; }
+  .nav-spheres:hover { color: var(--sky-deep) !important; }
+
+  .page-hero { min-height: 70vh; padding: 10rem 5rem 6rem; display: flex; flex-direction: column; justify-content: center; position: relative; overflow: hidden; }
+  .hero-bg { position: absolute; inset: 0; background: radial-gradient(ellipse at 70% 50%, rgba(196,168,130,0.06) 0%, transparent 60%); pointer-events: none; }
+  .page-hero-eyebrow { font-size: 0.66rem; letter-spacing: 0.24em; text-transform: uppercase; color: var(--realms-accent); margin-bottom: 1.5rem; display: block; opacity: 0; animation: fadeUp 0.8s ease forwards 0.2s; }
+  .page-hero-title { font-family: 'Cormorant Garamond', serif; font-size: clamp(2.5rem, 5vw, 5.5rem); font-weight: 300; line-height: 1.08; color: var(--white); margin-bottom: 2rem; max-width: 700px; opacity: 0; animation: fadeUp 1s ease forwards 0.35s; }
+  .page-hero-title em { font-style: italic; color: var(--realms-accent); }
+  .page-hero-sub { font-size: 0.96rem; font-weight: 300; color: rgba(253,252,250,0.45); line-height: 1.82; max-width: 500px; opacity: 0; animation: fadeUp 1s ease forwards 0.55s; }
+
+  .rule { height: 1px; background: linear-gradient(90deg, transparent, rgba(196,168,130,0.25) 30%, rgba(196,168,130,0.25) 70%, transparent); margin: 0 4rem; }
+
+  /* WHAT IT IS */
+  .what { padding: 6rem 5rem; display: grid; grid-template-columns: 180px 1fr; gap: 4rem; align-items: start; }
+  .section-label { font-size: 0.66rem; letter-spacing: 0.24em; text-transform: uppercase; color: var(--realms-accent); padding-top: 0.5rem; }
+  .what-text { font-family: 'Cormorant Garamond', serif; font-size: clamp(1.3rem, 2vw, 1.75rem); font-weight: 300; line-height: 1.7; color: rgba(253,252,250,0.65); }
+  .what-text strong { color: var(--white); font-weight: 400; }
+
+  /* FRAMEWORK */
+  .framework { padding: 5rem; background: var(--realms-mid); }
+  .framework-eyebrow { font-size: 0.66rem; letter-spacing: 0.24em; text-transform: uppercase; color: var(--realms-accent); margin-bottom: 2rem; display: block; }
+  .framework-title { font-family: 'Cormorant Garamond', serif; font-size: clamp(1.6rem, 2.5vw, 2.5rem); font-weight: 300; color: var(--white); margin-bottom: 3rem; line-height: 1.2; }
+
+  .framework-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--realms-dim); margin-bottom: 3rem; }
+  .framework-card { background: var(--realms-bg); padding: 2.5rem 2rem; }
+  .framework-card-num { font-family: 'Cormorant Garamond', serif; font-size: 0.78rem; font-style: italic; color: var(--realms-accent); margin-bottom: 1rem; opacity: 0.6; }
+  .framework-card-name { font-family: 'Cormorant Garamond', serif; font-size: 1.4rem; font-weight: 400; color: var(--white); margin-bottom: 1rem; line-height: 1.2; }
+  .framework-card-desc { font-size: 0.82rem; color: rgba(253,252,250,0.4); line-height: 1.82; font-weight: 300; }
+
+  .framework-note { font-size: 0.82rem; color: rgba(253,252,250,0.3); line-height: 1.82; font-weight: 300; max-width: 600px; font-style: italic; font-family: 'Cormorant Garamond', serif; }
+
+  /* HOW IT WORKS */
+  .how { padding: 6rem 5rem; display: grid; grid-template-columns: 1fr 1fr; gap: 5rem; align-items: start; }
+  .how h2 { font-family: 'Cormorant Garamond', serif; font-size: clamp(1.6rem, 2.5vw, 2.5rem); font-weight: 300; color: var(--white); line-height: 1.2; margin-bottom: 2rem; }
+  .how-steps { display: flex; flex-direction: column; gap: 0; }
+  .how-step { padding: 1.5rem 0; border-bottom: 1px solid var(--realms-dim); display: flex; gap: 1.5rem; align-items: flex-start; }
+  .how-step-num { font-family: 'Cormorant Garamond', serif; font-size: 1.2rem; font-style: italic; color: var(--realms-accent); opacity: 0.5; flex-shrink: 0; width: 2rem; }
+  .how-step-text { font-size: 0.84rem; color: rgba(253,252,250,0.55); line-height: 1.82; font-weight: 300; }
+  .how-step-text strong { color: rgba(253,252,250,0.8); font-weight: 400; }
+
+  .privacy-box { padding: 2rem 2.5rem; border: 1px solid var(--realms-dim); margin-top: 1rem; }
+  .privacy-box p { font-size: 0.8rem; color: rgba(253,252,250,0.35); line-height: 1.82; font-weight: 300; font-style: italic; font-family: 'Cormorant Garamond', serif; }
+
+  /* CTA */
+  .cta-section { padding: 6rem 5rem; text-align: center; position: relative; overflow: hidden; }
+  .cta-bg { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 50%, rgba(196,168,130,0.04) 0%, transparent 70%); pointer-events: none; }
+  .cta-section h2 { font-family: 'Cormorant Garamond', serif; font-size: clamp(1.8rem, 3vw, 3.5rem); font-weight: 300; color: var(--white); margin-bottom: 1.2rem; line-height: 1.2; }
+  .cta-section p { font-size: 0.88rem; color: rgba(253,252,250,0.4); line-height: 1.82; max-width: 440px; margin: 0 auto 3rem; font-weight: 300; }
+  .cta-btn { display: inline-block; font-size: 0.78rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--realms-accent); border: 1px solid var(--realms-dim); padding: 1rem 2.5rem; text-decoration: none; transition: all 0.3s; font-family: 'DM Sans', sans-serif; }
+  .cta-btn:hover { border-color: var(--realms-accent); background: rgba(196,168,130,0.05); letter-spacing: 0.2em; }
+  .copyright { margin-top: 3rem; font-size: 0.68rem; color: rgba(253,252,250,0.15); letter-spacing: 0.06em; line-height: 1.8; }
+
+  /* SPHERES BRIDGE */
+  .spheres-bridge { padding: 3rem 5rem; background: var(--realms-mid); text-align: center; border-top: 1px solid var(--realms-dim); }
+  .spheres-bridge a { font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(184,218,234,0.3); text-decoration: none; transition: color 0.3s; }
+  .spheres-bridge a:hover { color: rgba(184,218,234,0.6); }
+
+  footer { padding: 2rem 4rem; background: var(--realms-bg); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; border-top: 1px solid var(--realms-dim); }
+  .footer-logo { font-family: 'Cormorant Garamond', serif; font-size: 0.9rem; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(253,252,250,0.2); text-decoration: none; }
+  .footer-copy { font-size: 0.68rem; color: rgba(253,252,250,0.12); }
+
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+  .reveal { opacity: 0; transform: translateY(20px); transition: opacity 0.9s ease, transform 0.9s ease; }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+
+  @media (max-width: 900px) {
+    nav { padding: 1.2rem 1.5rem; }
+    .nav-links { display: none; }
+    .page-hero { padding: 7rem 1.8rem 3rem; min-height: auto; }
+    .what { grid-template-columns: 1fr; padding: 4rem 1.8rem; gap: 1.2rem; }
+    .framework { padding: 3rem 1.8rem; }
+    .framework-grid { grid-template-columns: 1fr; }
+    .how { grid-template-columns: 1fr; padding: 4rem 1.8rem; gap: 3rem; }
+    .cta-section { padding: 4rem 1.8rem; }
+    .spheres-bridge { padding: 2rem 1.8rem; }
+    footer { padding: 1.8rem; }
+    .rule { margin: 0 1.8rem; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">Spheres &amp; Realms</a>
+  <ul class="nav-links">
+    <li><a href="spheres.html" class="nav-spheres">Spheres</a></li>
+    <li><a href="realms.html" class="nav-active">Realms</a></li>
+    <li><a href="index.html#contact">Connect</a></li>
+  </ul>
+</nav>
+
+<div class="page-hero">
+  <div class="hero-bg"></div>
+  <span class="page-hero-eyebrow">Realms</span>
+  <h1 class="page-hero-title">Where the interior<br>work <em>lives.</em></h1>
+  <p class="page-hero-sub">The framework beneath everything Spheres &amp; Realms builds — and a practice for those ready to use it.</p>
+</div>
+
+<div class="rule"></div>
+
+<section class="what">
+  <p class="section-label reveal">What it is</p>
+  <p class="what-text reveal">Most of us move through our days on patterns we didn't consciously choose — <strong>giving more than we have</strong>, protecting ourselves from things that no longer threaten us, or both.<br><br>The Leaking Hero Tracker brings awareness to where these patterns run — so that <strong>choice becomes possible</strong> and compensation can be dealt with.</p>
+</section>
+
+<div class="rule"></div>
+
+<section class="framework">
+  <span class="framework-eyebrow reveal">The framework</span>
+  <h2 class="framework-title reveal">Three directions of departure.<br>One original map.</h2>
+
+  <div class="framework-grid reveal">
+    <div class="framework-card">
+      <p class="framework-card-num">I</p>
+      <h3 class="framework-card-name">The Leaking Hero</h3>
+      <p class="framework-card-desc">Cutting ourselves for others. Giving before asked. Explaining to maintain closeness. The room breathes easier when we are there — but we cannot breathe inside ourselves.</p>
+    </div>
+    <div class="framework-card">
+      <p class="framework-card-num">II</p>
+      <h3 class="framework-card-name">The False Hero</h3>
+      <p class="framework-card-desc">Armouring ourselves to override. Productivity as proof. Distance that feels like groundedness. Something real has been built — but the person is not quite inside it.</p>
+    </div>
+    <div class="framework-card">
+      <p class="framework-card-num">III</p>
+      <h3 class="framework-card-name">The Original Self</h3>
+      <p class="framework-card-desc">The action coherent with the moment. Not spiritual quietude — can be sharp, direct, even angry. What makes it original is its source: the moment, not the current.</p>
+    </div>
+  </div>
+
+  <p class="framework-note reveal">These are not types. They are directions of departure — currents that pull a person from their original vision. The tool does not label you. It shows you where and how you leave yourself.</p>
+</section>
+
+<div class="rule"></div>
+
+<section class="how">
+  <div>
+    <h2 class="reveal">How the practice works.</h2>
+    <div class="how-steps reveal">
+      <div class="how-step">
+        <span class="how-step-num">1</span>
+        <p class="how-step-text"><strong>A conversation first.</strong> An AI-guided exchange that surfaces your current pattern and maps it to the framework. Minimum six exchanges before any reflection is offered.</p>
+      </div>
+      <div class="how-step">
+        <span class="how-step-num">2</span>
+        <p class="how-step-text"><strong>Eight days of tracking.</strong> One honest entry per day — the most charged moment, observed through a few precise questions.</p>
+      </div>
+      <div class="how-step">
+        <span class="how-step-num">3</span>
+        <p class="how-step-text"><strong>Pattern reflection at day four and day eight.</strong> What the tracking showed — the recurring shape of the departure, the current that kept running.</p>
+      </div>
+      <div class="how-step">
+        <span class="how-step-num">4</span>
+        <p class="how-step-text"><strong>A map, not a verdict.</strong> Built entirely from what you brought. The more honestly you speak, the more specific it becomes.</p>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div class="privacy-box reveal">
+      <p>Your entries are used only to generate your pattern tracking. They are not read or reviewed by any person. The moment you describe each day is released as soon as your entry is complete. What you share here is between you and the practice.</p>
+    </div>
+  </div>
+</section>
+
+<section class="cta-section">
+  <div class="cta-bg"></div>
+  <h2 class="reveal">Begin when you're ready.</h2>
+  <p class="reveal">There is no right time. There is only the decision to look honestly at what has been running.</p>
+  <a href="https://sunny-sfogliatella-03d096.netlify.app/" target="_blank" class="cta-btn reveal">Enter the tracker →</a>
+  <p class="copyright reveal">
+    Developed by our founder. Original framework.<br>
+    © 2025 Spheres &amp; Realms. The Leaking Hero framework is an original work. All rights reserved.
+  </p>
+</section>
+
+<div class="spheres-bridge reveal">
+  <a href="spheres.html">The spheres to which all of this leads →</a>
+</div>
+
+<footer>
+  <a href="index.html" class="footer-logo">Spheres &amp; Realms</a>
+  <span class="footer-copy">© 2025 Spheres &amp; Realms</span>
+</footer>
+
+<script>
+  const reveals = document.querySelectorAll('.reveal');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry, i) => {
+      if (entry.isIntersecting) {
+        setTimeout(() => entry.target.classList.add('visible'), i * 80);
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.06 });
+  reveals.forEach(el => observer.observe(el));
+</script>
+</body>
+</html>
