@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spheres & Realms</title>
+<meta name="description" content="AI-powered tools that help people communicate more honestly — in businesses, classrooms, and homes.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
+
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --sky: #b8daea;
+    --sky-light: #e8f5fb;
+    --sky-deep: #4a93b8;
+    --warm: #f8f4ef;
+    --warm-dark: #f0ece6;
+    --ink: #1c1c1a;
+    --ink-mid: #424240;
+    --ink-soft: #88887f;
+    --white: #fdfcfa;
+    --realms-bg: #0f0e0c;
+    --realms-accent: #c4a882;
+    --realms-dim: #2e2820;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--warm);
+    color: var(--ink);
+    overflow-x: hidden;
+  }
+
+  /* NAV */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    padding: 1.3rem 4rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(248,244,239,0.92);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid rgba(184,218,234,0.2);
+  }
+
+  .nav-logo {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.05rem;
+    font-weight: 400;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  .nav-links { display: flex; gap: 2.5rem; list-style: none; align-items: center; }
+
+  .nav-links a {
+    font-size: 0.74rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    text-decoration: none;
+    transition: color 0.3s;
+  }
+
+  .nav-links a:hover { color: var(--sky-deep); }
+  .nav-realms { color: var(--realms-accent) !important; }
+  .nav-realms:hover { opacity: 0.7; }
+
+  /* HERO */
+  .hero {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 55% 45%;
+  }
+
+  .hero-left {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 9rem 5rem 6rem;
+  }
+
+  .hero-eyebrow {
+    font-size: 0.66rem;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--sky-deep);
+    margin-bottom: 1.8rem;
+    opacity: 0;
+    animation: fadeUp 0.8s ease forwards 0.2s;
+  }
+
+  .hero-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(3rem, 5.2vw, 5.8rem);
+    font-weight: 300;
+    line-height: 1.07;
+    color: var(--ink);
+    margin-bottom: 2.5rem;
+    opacity: 0;
+    animation: fadeUp 1s ease forwards 0.35s;
+  }
+
+  .hero-title em { font-style: italic; color: var(--sky-deep); }
+
+  .hero-sub {
+    font-size: 0.96rem;
+    font-weight: 300;
+    color: var(--ink-mid);
+    line-height: 1.82;
+    max-width: 400px;
+    margin-bottom: 3.5rem;
+    opacity: 0;
+    animation: fadeUp 1s ease forwards 0.55s;
+  }
+
+  .hero-cta {
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+    opacity: 0;
+    animation: fadeUp 1s ease forwards 0.72s;
+  }
+
+  .btn-primary {
+    padding: 0.85rem 2.2rem;
+    background: var(--ink);
+    color: var(--white);
+    font-size: 0.76rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    text-decoration: none;
+    font-family: 'DM Sans', sans-serif;
+    transition: background 0.3s, transform 0.2s;
+    display: inline-block;
+  }
+
+  .btn-primary:hover { background: var(--sky-deep); transform: translateY(-2px); }
+
+  .btn-text {
+    font-size: 0.76rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    text-decoration: none;
+    transition: color 0.3s;
+  }
+
+  .btn-text:hover { color: var(--sky-deep); }
+
+  .hero-right {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(155deg, var(--sky-light) 0%, var(--sky) 55%, #6aaecb 100%);
+  }
+
+  .hero-orbs {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .orb {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.3);
+    animation: breathe 8s ease-in-out infinite;
+  }
+
+  .orb:nth-child(1) { width: 120px; height: 120px; background: rgba(255,255,255,0.12); }
+  .orb:nth-child(2) { width: 260px; height: 260px; animation-delay: 1.5s; }
+  .orb:nth-child(3) { width: 420px; height: 420px; animation-delay: 3s; }
+  .orb:nth-child(4) { width: 580px; height: 580px; animation-delay: 4.5s; opacity: 0.35; }
+
+  .rule {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(184,218,234,0.6) 30%, rgba(184,218,234,0.6) 70%, transparent);
+    margin: 0 4rem;
+  }
+
+  /* ABOUT */
+  .about {
+    padding: 7rem 5rem;
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 4rem;
+    align-items: start;
+  }
+
+  .section-label {
+    font-size: 0.66rem;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--sky-deep);
+    padding-top: 0.5rem;
+  }
+
+  .about-text {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(1.45rem, 2.3vw, 2rem);
+    font-weight: 300;
+    line-height: 1.68;
+    color: var(--ink-mid);
+  }
+
+  .about-text strong { color: var(--ink); font-weight: 400; }
+
+  /* AI MENTION */
+  .ai-strip {
+    background: var(--ink);
+    padding: 2.5rem 5rem;
+    display: flex;
+    align-items: center;
+    gap: 3rem;
+  }
+
+  .ai-strip-label {
+    font-size: 0.66rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--sky-deep);
+    flex-shrink: 0;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .ai-strip-text {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.15rem;
+    font-weight: 300;
+    color: rgba(253,252,250,0.75);
+    line-height: 1.65;
+    font-style: italic;
+  }
+
+  .ai-strip-text strong { color: var(--white); font-weight: 400; font-style: normal; }
+
+  /* SIDE BY SIDE CONTAINER */
+  .two-worlds {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    min-height: 100vh;
+  }
+
+  /* SPHERES SIDE */
+  .spheres-side {
+    background: var(--warm-dark);
+    padding: 5rem 4rem;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .world-eyebrow {
+    font-size: 0.66rem;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+    display: block;
+  }
+
+  .spheres-eyebrow { color: var(--sky-deep); }
+
+  .world-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(1.6rem, 2.2vw, 2.4rem);
+    font-weight: 300;
+    line-height: 1.2;
+    margin-bottom: 0.8rem;
+  }
+
+  .spheres-title { color: var(--ink); }
+
+  .world-sub {
+    font-size: 0.84rem;
+    font-weight: 300;
+    line-height: 1.8;
+    margin-bottom: 2.5rem;
+  }
+
+  .spheres-sub { color: var(--ink-soft); }
+
+  .sphere-cards { display: flex; flex-direction: column; gap: 1px; flex: 1; }
+
+  .sphere-card {
+    background: var(--white);
+    padding: 2rem 2rem;
+    position: relative;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    transition: background 0.3s;
+    border-left: 2px solid transparent;
+    transition: all 0.3s;
+  }
+
+  .sphere-card:hover {
+    background: var(--sky-light);
+    border-left-color: var(--sky-deep);
+  }
+
+  .sphere-card-num {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 0.76rem;
+    font-style: italic;
+    color: var(--sky-deep);
+    margin-bottom: 0.5rem;
+  }
+
+  .sphere-card-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.4rem;
+    font-weight: 400;
+    color: var(--ink);
+    margin-bottom: 0.3rem;
+  }
+
+  .sphere-card-for {
+    font-size: 0.66rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--sky-deep);
+    margin-bottom: 0.9rem;
+  }
+
+  .sphere-card-problem {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 0.88rem;
+    font-style: italic;
+    color: var(--ink);
+    line-height: 1.65;
+    margin-bottom: 0.7rem;
+  }
+
+  .sphere-card-how {
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    line-height: 1.8;
+    font-weight: 300;
+    margin-bottom: 1.2rem;
+  }
+
+  .sphere-card-cta {
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--sky-deep);
+    font-family: 'DM Sans', sans-serif;
+    transition: letter-spacing 0.3s;
+  }
+
+  .sphere-card:hover .sphere-card-cta { letter-spacing: 0.16em; }
+
+  .spheres-privacy {
+    margin-top: 1.5rem;
+    padding: 1.2rem 1.5rem;
+    background: rgba(184,218,234,0.15);
+    border-left: 2px solid var(--sky-deep);
+    font-size: 0.76rem;
+    color: var(--ink-mid);
+    line-height: 1.75;
+    font-weight: 300;
+  }
+
+  .spheres-privacy strong { color: var(--ink); font-weight: 400; }
+
+  .spheres-bridge {
+    margin-top: 2rem;
+    text-align: center;
+  }
+
+  .spheres-bridge a {
+    font-size: 0.7rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--realms-accent);
+    text-decoration: none;
+    font-family: 'DM Sans', sans-serif;
+    opacity: 0.7;
+    transition: opacity 0.3s;
+  }
+
+  .spheres-bridge a:hover { opacity: 1; }
+
+  /* REALMS SIDE */
+  .realms-side {
+    background: var(--realms-bg);
+    padding: 5rem 4rem;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  .realms-eyebrow { color: var(--realms-accent); }
+  .realms-title { color: var(--white); }
+  .realms-title em { font-style: italic; color: var(--realms-accent); }
+  .realms-sub { color: rgba(253,252,250,0.45); }
+
+  .realms-body {
+    font-size: 0.84rem;
+    color: rgba(253,252,250,0.5);
+    line-height: 1.9;
+    font-weight: 300;
+    margin-bottom: 2rem;
+    flex: 1;
+  }
+
+  .realms-body strong { color: rgba(253,252,250,0.8); font-weight: 400; }
+
+  .framework-box {
+    border: 1px solid var(--realms-dim);
+    padding: 2rem;
+    margin-bottom: 2rem;
+  }
+
+  .framework-box-label {
+    font-size: 0.64rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--realms-accent);
+    margin-bottom: 1.2rem;
+    display: block;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .framework-items { display: flex; flex-direction: column; gap: 0.8rem; }
+
+  .framework-item {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 0.95rem;
+    font-style: italic;
+    color: rgba(253,252,250,0.7);
+    line-height: 1.5;
+    padding-left: 1rem;
+    border-left: 1px solid var(--realms-dim);
+  }
+
+  .realms-cta {
+    display: inline-block;
+    font-size: 0.74rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--realms-accent);
+    text-decoration: none;
+    font-family: 'DM Sans', sans-serif;
+    margin-bottom: 1rem;
+    transition: letter-spacing 0.3s;
+  }
+
+  .realms-cta:hover { letter-spacing: 0.2em; }
+
+  .realms-copyright {
+    font-size: 0.65rem;
+    color: rgba(253,252,250,0.18);
+    letter-spacing: 0.06em;
+    font-family: 'DM Sans', sans-serif;
+    margin-bottom: 2rem;
+  }
+
+  .realms-bridge-link {
+    font-size: 0.68rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(184,218,234,0.3);
+    text-decoration: none;
+    font-family: 'DM Sans', sans-serif;
+    transition: color 0.3s;
+  }
+
+  .realms-bridge-link:hover { color: rgba(184,218,234,0.6); }
+
+  /* CONTACT */
+  .contact {
+    padding: 6rem 5rem;
+    background: var(--warm);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6rem;
+    align-items: start;
+  }
+
+  .contact h2 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(1.8rem, 2.5vw, 2.8rem);
+    font-weight: 300;
+    color: var(--ink);
+    line-height: 1.2;
+    margin-bottom: 1.2rem;
+  }
+
+  .contact > div > p {
+    font-size: 0.86rem;
+    color: var(--ink-soft);
+    line-height: 1.85;
+    font-weight: 300;
+  }
+
+  .contact-form { display: flex; flex-direction: column; gap: 0.9rem; }
+
+  .contact-form input,
+  .contact-form textarea {
+    background: var(--white);
+    border: 1px solid rgba(184,218,234,0.5);
+    color: var(--ink);
+    padding: 0.9rem 1.1rem;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.84rem;
+    font-weight: 300;
+    outline: none;
+    transition: border-color 0.3s;
+    resize: none;
+    width: 100%;
+  }
+
+  .contact-form input::placeholder,
+  .contact-form textarea::placeholder { color: var(--ink-soft); }
+
+  .contact-form input:focus,
+  .contact-form textarea:focus { border-color: var(--sky-deep); }
+
+  .contact-form button {
+    padding: 0.9rem;
+    background: var(--ink);
+    color: var(--white);
+    border: none;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.76rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.3s;
+  }
+
+  .contact-form button:hover { background: var(--sky-deep); }
+
+  /* FOOTER */
+  footer {
+    padding: 2rem 4rem;
+    background: var(--ink);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .footer-logo {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 0.9rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(253,252,250,0.28);
+  }
+
+  .footer-tag {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 0.82rem;
+    font-style: italic;
+    color: rgba(184,218,234,0.35);
+  }
+
+  .footer-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.4rem;
+  }
+
+  .footer-copy { font-size: 0.68rem; color: rgba(253,252,250,0.18); }
+
+  .footer-learn {
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(184,218,234,0.3);
+    text-decoration: none;
+    font-family: 'DM Sans', sans-serif;
+    transition: color 0.3s;
+  }
+
+  .footer-learn:hover { color: rgba(184,218,234,0.6); }
+
+  /* ANIMATIONS */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes breathe {
+    0%, 100% { transform: scale(1); opacity: 0.45; }
+    50% { transform: scale(1.06); opacity: 0.85; }
+  }
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.9s ease, transform 0.9s ease;
+  }
+
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+
+  /* MOBILE */
+  @media (max-width: 900px) {
+    nav { padding: 1.2rem 1.5rem; }
+    .nav-links { display: none; }
+    .hero { grid-template-columns: 1fr; }
+    .hero-left { padding: 7rem 1.8rem 3rem; }
+    .hero-right { height: 220px; }
+    .about { grid-template-columns: 1fr; padding: 4rem 1.8rem; gap: 1.2rem; }
+    .ai-strip { padding: 2rem 1.8rem; flex-direction: column; gap: 1rem; }
+    .two-worlds { grid-template-columns: 1fr; }
+    .spheres-side, .realms-side { padding: 4rem 1.8rem; }
+    .contact { grid-template-columns: 1fr; padding: 4rem 1.8rem; gap: 3rem; }
+    footer { padding: 2rem 1.8rem; }
+    .footer-right { align-items: flex-start; }
+    .rule { margin: 0 1.8rem; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="#" class="nav-logo">Spheres &amp; Realms</a>
+  <ul class="nav-links">
+    <li><a href="#spheres">Spheres</a></li>
+    <li><a href="#realms" class="nav-realms">Realms</a></li>
+    <li><a href="#contact">Connect</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-left">
+    <p class="hero-eyebrow">Spheres &amp; Realms</p>
+    <h1 class="hero-title">
+      Untangling<br>
+      <em>complexity.</em><br>
+      Revealing what<br>
+      <em>simplicity hides.</em>
+    </h1>
+    <p class="hero-sub">AI-powered tools that help people communicate more honestly — in businesses, classrooms, and homes. The conversation that needed to happen — finally does.</p>
+    <div class="hero-cta">
+      <a href="#spheres" class="btn-primary">See our tools</a>
+      <a href="#contact" class="btn-text">Get in touch</a>
+    </div>
+  </div>
+  <div class="hero-right">
+    <div class="hero-orbs">
+      <div class="orb"></div>
+      <div class="orb"></div>
+      <div class="orb"></div>
+      <div class="orb"></div>
+    </div>
+  </div>
+</section>
+
+<div class="rule"></div>
+
+<!-- ABOUT -->
+<section class="about">
+  <p class="section-label reveal">About</p>
+  <p class="about-text reveal">
+    Spheres &amp; Realms is an organisation without a fixed destination.<br><br>
+    We move toward <strong>human complexity</strong> wherever it asks to be seen, heard, or made workable. The work takes different forms. The intention stays the same.
+  </p>
+</section>
+
+<!-- AI STRIP -->
+<div class="ai-strip reveal">
+  <span class="ai-strip-label">Why AI</span>
+  <p class="ai-strip-text">These tools use AI not as a feature but as an <strong>intervention</strong> — to hold space for what people find difficult to say directly. The AI does not replace the human exchange. It makes the human exchange possible.</p>
+</div>
+
+<!-- TWO WORLDS SIDE BY SIDE -->
+<div class="two-worlds">
+
+  <!-- SPHERES -->
+  <div class="spheres-side" id="spheres">
+    <span class="world-eyebrow spheres-eyebrow reveal">Spheres</span>
+    <h2 class="world-title spheres-title reveal">Three tools.<br>Three real situations.</h2>
+    <p class="world-sub spheres-sub reveal">Where the work meets the world — in businesses, classrooms, and homes.</p>
+
+    <div class="sphere-cards reveal">
+
+      <a href="https://aesthetic-panda-3ceb38.netlify.app/" target="_blank" class="sphere-card">
+        <p class="sphere-card-num">01</p>
+        <h3 class="sphere-card-name">Honest Signal</h3>
+        <p class="sphere-card-for">Businesses · Owners · Customers</p>
+        <p class="sphere-card-problem">Most feedback that could actually change something never gets said — not because people don't have it, but because no channel felt safe or simple enough.</p>
+        <p class="sphere-card-how">Anonymous AI-structured channel between customers and businesses. Real signal. Relationship intact.</p>
+        <span class="sphere-card-cta">Try it once →</span>
+      </a>
+
+      <a href="https://tangerine-gumdrop-5cb13f.netlify.app/" target="_blank" class="sphere-card">
+        <p class="sphere-card-num">02</p>
+        <h3 class="sphere-card-name">Open Signal</h3>
+        <p class="sphere-card-for">Teachers · Schools · Educators</p>
+        <p class="sphere-card-problem">The teachers who most want honest feedback from students are often the least likely to receive it — because students protect the relationship.</p>
+        <p class="sphere-card-how">Anonymous AI-structured feedback from students to teachers. The signal that changes the room — without anyone getting hurt.</p>
+        <span class="sphere-card-cta">Try it once →</span>
+      </a>
+
+      <a href="https://handsome-patience-production-fef8.up.railway.app/" target="_blank" class="sphere-card">
+        <p class="sphere-card-num">03</p>
+        <h3 class="sphere-card-name">Confession Box</h3>
+        <p class="sphere-card-for">Parents · Families · Children</p>
+        <p class="sphere-card-problem">You know something is on their mind. They won't say it.</p>
+        <p class="sphere-card-how">A safe channel for children to reach parents — AI helps find the words. The child who learns to speak honestly here carries that capacity everywhere.</p>
+        <span class="sphere-card-cta">Try it once →</span>
+      </a>
+
+    </div>
+
+    <div class="spheres-privacy reveal">
+      <strong>On privacy:</strong> All conversations are anonymous. Nothing you share is read by any person. No data is stored beyond what the tool needs in the moment. What happens here stays here.
+    </div>
+
+    <div class="spheres-bridge reveal">
+      <a href="#realms">The realm from which all of this emerges →</a>
+    </div>
+  </div>
+
+  <!-- REALMS -->
+  <div class="realms-side" id="realms">
+    <span class="world-eyebrow realms-eyebrow reveal">Realms</span>
+    <h2 class="world-title realms-title reveal">Where the interior<br>work <em>lives.</em></h2>
+    <p class="world-sub realms-sub reveal">The framework beneath everything Spheres &amp; Realms builds.</p>
+
+    <div class="realms-body reveal">
+      Most of us move through our days on patterns we didn't consciously choose — giving more than we have, protecting ourselves from things that no longer threaten us, or both.<br><br>
+      The <strong>Leaking Hero Tracker</strong> is an 8-day self-observation practice that brings awareness to where these patterns run — so that choice becomes possible and compensation can be dealt with.<br><br>
+      A conversation first. Then one honest entry each day. At day four and day eight, the pattern is reflected back. Not as diagnosis. As a map — built entirely from what you brought.
+    </div>
+
+    <div class="framework-box reveal">
+      <span class="framework-box-label">The framework</span>
+      <div class="framework-items">
+        <p class="framework-item">The Leaking Hero — cutting ourselves for others</p>
+        <p class="framework-item">The False Hero — armouring ourselves to override</p>
+        <p class="framework-item">The Original Self — the action coherent with the moment</p>
+      </div>
+    </div>
+
+    <p style="font-size:0.78rem; color:rgba(253,252,250,0.35); line-height:1.8; font-weight:300; margin-bottom:1.5rem;">
+      These are not types. They are directions of departure — currents that pull a person from their original vision. The tool does not label you. It shows you where and how you leave yourself.
+    </p>
+
+    <a href="https://sunny-sfogliatella-03d096.netlify.app/" target="_blank" class="realms-cta reveal">Begin when you're ready →</a>
+
+    <p class="realms-copyright reveal">
+      Developed by our founder. Original framework.<br>
+      © Spheres &amp; Realms. The Leaking Hero framework is an original work. All rights reserved.
+    </p>
+
+    <a href="#spheres" class="realms-bridge-link reveal">The spheres to which all of this leads ↑</a>
+  </div>
+
+</div>
+
+<div class="rule"></div>
+
+<!-- CONTACT -->
+<section class="contact" id="contact">
+  <div>
+    <h2 class="reveal">Start a<br>conversation.</h2>
+    <p class="reveal">Organisation or individual — reach out. We'll find where the work connects.</p>
+  </div>
+  <form class="contact-form reveal" onsubmit="return false;">
+    <input type="text" placeholder="Your name">
+    <input type="email" placeholder="Email">
+    <input type="text" placeholder="Organisation (optional)">
+    <textarea rows="4" placeholder="What brings you here?"></textarea>
+    <button type="submit">Send</button>
+  </form>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <span class="footer-logo">Spheres &amp; Realms</span>
+  <span class="footer-tag">Untangling complexity. Revealing what simplicity hides.</span>
+  <div class="footer-right">
+    <a href="/about" class="footer-learn">Learn more about Spheres &amp; Realms →</a>
+    <span class="footer-copy">© 2025 Spheres &amp; Realms</span>
+  </div>
+</footer>
+
+<script>
+  const reveals = document.querySelectorAll('.reveal');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry, i) => {
+      if (entry.isIntersecting) {
+        setTimeout(() => entry.target.classList.add('visible'), i * 80);
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.06 });
+  reveals.forEach(el => observer.observe(el));
+</script>
+
+</body>
+</html>
