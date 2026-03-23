@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spheres — Spheres & Realms</title>
+<meta name="description" content="Three AI-powered tools for honest communication — in businesses, classrooms, and homes.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --sky: #b8daea; --sky-light: #e8f5fb; --sky-deep: #4a93b8;
+    --warm: #f8f4ef; --warm-dark: #f0ece6;
+    --ink: #1c1c1a; --ink-mid: #424240; --ink-soft: #88887f;
+    --white: #fdfcfa; --realms-accent: #c4a882;
+  }
+  html { scroll-behavior: smooth; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--warm); color: var(--ink); overflow-x: hidden; }
+
+  nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; padding: 1.3rem 4rem; display: flex; justify-content: space-between; align-items: center; background: rgba(248,244,239,0.92); backdrop-filter: blur(16px); border-bottom: 1px solid rgba(184,218,234,0.2); }
+  .nav-logo { font-family: 'Cormorant Garamond', serif; font-size: 1.05rem; font-weight: 400; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink); text-decoration: none; }
+  .nav-links { display: flex; gap: 2.5rem; list-style: none; align-items: center; }
+  .nav-links a { font-size: 0.74rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-soft); text-decoration: none; transition: color 0.3s; }
+  .nav-links a:hover { color: var(--sky-deep); }
+  .nav-active { color: var(--sky-deep) !important; }
+  .nav-realms { color: var(--realms-accent) !important; }
+
+  .page-hero { padding: 10rem 5rem 5rem; background: var(--warm-dark); }
+  .page-hero-eyebrow { font-size: 0.66rem; letter-spacing: 0.24em; text-transform: uppercase; color: var(--sky-deep); margin-bottom: 1.2rem; display: block; opacity: 0; animation: fadeUp 0.8s ease forwards 0.2s; }
+  .page-hero-title { font-family: 'Cormorant Garamond', serif; font-size: clamp(2.5rem, 5vw, 5rem); font-weight: 300; line-height: 1.1; color: var(--ink); margin-bottom: 1.5rem; opacity: 0; animation: fadeUp 1s ease forwards 0.35s; }
+  .page-hero-title em { font-style: italic; color: var(--sky-deep); }
+  .page-hero-sub { font-size: 0.96rem; font-weight: 300; color: var(--ink-mid); line-height: 1.82; max-width: 520px; opacity: 0; animation: fadeUp 1s ease forwards 0.55s; }
+
+  .rule { height: 1px; background: linear-gradient(90deg, transparent, rgba(184,218,234,0.6) 30%, rgba(184,218,234,0.6) 70%, transparent); margin: 0 4rem; }
+
+  .ai-strip { background: var(--ink); padding: 2rem 5rem; display: flex; align-items: center; gap: 3rem; }
+  .ai-strip-label { font-size: 0.66rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--sky-deep); flex-shrink: 0; }
+  .ai-strip-text { font-family: 'Cormorant Garamond', serif; font-size: 1.1rem; font-weight: 300; color: rgba(253,252,250,0.7); line-height: 1.65; font-style: italic; }
+  .ai-strip-text strong { color: var(--white); font-weight: 400; font-style: normal; }
+
+  .products { padding: 5rem; background: var(--warm); }
+  .products-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: rgba(184,218,234,0.35); }
+
+  .product-card { background: var(--white); padding: 3rem 2.5rem; position: relative; text-decoration: none; color: inherit; display: flex; flex-direction: column; transition: background 0.35s; border-bottom: 2px solid transparent; transition: all 0.35s; }
+  .product-card:hover { background: var(--sky-light); border-bottom-color: var(--sky-deep); }
+
+  .product-num { font-family: 'Cormorant Garamond', serif; font-size: 0.78rem; font-style: italic; color: var(--sky-deep); margin-bottom: 1rem; }
+  .product-name { font-family: 'Cormorant Garamond', serif; font-size: 1.7rem; font-weight: 400; color: var(--ink); margin-bottom: 0.4rem; line-height: 1.2; }
+  .product-for { font-size: 0.66rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--sky-deep); margin-bottom: 1.5rem; }
+  .product-problem { font-family: 'Cormorant Garamond', serif; font-size: 0.95rem; font-style: italic; color: var(--ink); line-height: 1.7; margin-bottom: 1rem; }
+  .product-how { font-size: 0.82rem; color: var(--ink-soft); line-height: 1.82; font-weight: 300; margin-bottom: 2rem; flex: 1; }
+  .product-cta { display: inline-block; font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--white); background: var(--ink); padding: 0.7rem 1.5rem; text-decoration: none; transition: background 0.3s; align-self: flex-start; }
+  .product-card:hover .product-cta { background: var(--sky-deep); }
+
+  .privacy-section { padding: 3rem 5rem; background: var(--warm-dark); }
+  .privacy-box { padding: 2rem 2.5rem; background: rgba(184,218,234,0.12); border-left: 2px solid var(--sky-deep); }
+  .privacy-box p { font-size: 0.84rem; color: var(--ink-mid); line-height: 1.82; font-weight: 300; }
+  .privacy-box strong { color: var(--ink); font-weight: 400; }
+
+  .realms-bridge { padding: 4rem 5rem; background: var(--ink); text-align: center; }
+  .realms-bridge p { font-family: 'Cormorant Garamond', serif; font-size: 1.2rem; font-style: italic; font-weight: 300; color: rgba(253,252,250,0.5); margin-bottom: 1.5rem; }
+  .realms-bridge a { font-size: 0.74rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--realms-accent); text-decoration: none; transition: opacity 0.3s; }
+  .realms-bridge a:hover { opacity: 0.7; }
+
+  footer { padding: 2rem 4rem; background: var(--ink); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; border-top: 1px solid rgba(184,218,234,0.08); }
+  .footer-logo { font-family: 'Cormorant Garamond', serif; font-size: 0.9rem; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(253,252,250,0.28); text-decoration: none; }
+  .footer-copy { font-size: 0.68rem; color: rgba(253,252,250,0.18); }
+
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+  .reveal { opacity: 0; transform: translateY(20px); transition: opacity 0.9s ease, transform 0.9s ease; }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+
+  @media (max-width: 900px) {
+    nav { padding: 1.2rem 1.5rem; }
+    .nav-links { display: none; }
+    .page-hero { padding: 7rem 1.8rem 3rem; }
+    .products { padding: 3rem 1.8rem; }
+    .products-grid { grid-template-columns: 1fr; }
+    .privacy-section { padding: 2rem 1.8rem; }
+    .realms-bridge { padding: 3rem 1.8rem; }
+    .ai-strip { padding: 2rem 1.8rem; flex-direction: column; gap: 1rem; }
+    footer { padding: 1.8rem; }
+    .rule { margin: 0 1.8rem; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">Spheres &amp; Realms</a>
+  <ul class="nav-links">
+    <li><a href="spheres.html" class="nav-active">Spheres</a></li>
+    <li><a href="realms.html" class="nav-realms">Realms</a></li>
+    <li><a href="index.html#contact">Connect</a></li>
+  </ul>
+</nav>
+
+<div class="page-hero">
+  <span class="page-hero-eyebrow">Spheres</span>
+  <h1 class="page-hero-title">Where the work<br>meets the <em>world.</em></h1>
+  <p class="page-hero-sub">Three AI-powered tools built around one insight — the honest signal that could actually change something usually doesn't get said. These tools create the conditions for it to reach.</p>
+</div>
+
+<div class="ai-strip reveal">
+  <span class="ai-strip-label">Why AI</span>
+  <p class="ai-strip-text">These tools use AI not as a feature but as an <strong>intervention</strong> — to hold space for what people find difficult to say directly. The AI does not replace the human exchange. It makes the human exchange possible.</p>
+</div>
+
+<section class="products">
+  <div class="products-grid">
+
+    <a href="https://aesthetic-panda-3ceb38.netlify.app/" target="_blank" class="product-card reveal">
+      <p class="product-num">01</p>
+      <h3 class="product-name">Honest Signal</h3>
+      <p class="product-for">Businesses · Owners · Customers</p>
+      <p class="product-problem">Most feedback that could actually change something never gets said — not because people don't have it, but because no channel felt safe or simple enough.</p>
+      <p class="product-how">A private, anonymous channel between customers and the business they use. AI structures the conversation so what arrives is clear and useful — not just a rating, not just a complaint. The owner gets real signal. The customer gets heard. The relationship stays intact.</p>
+      <a href="https://aesthetic-panda-3ceb38.netlify.app/" target="_blank" class="product-cta">Try it once →</a>
+    </a>
+
+    <a href="https://tangerine-gumdrop-5cb13f.netlify.app/" target="_blank" class="product-card reveal">
+      <p class="product-num">02</p>
+      <h3 class="product-name">Open Signal</h3>
+      <p class="product-for">Teachers · Schools · Educators</p>
+      <p class="product-problem">The teachers who most want honest feedback from students are often the least likely to receive it — because students protect the relationship.</p>
+      <p class="product-how">An anonymous feedback channel from students to teachers. AI structures the raw response so what arrives is clear, not wounding. The teacher gets the signal that changes the room. The student's honesty is protected. Good teachers get what they need to become great ones.</p>
+      <a href="https://tangerine-gumdrop-5cb13f.netlify.app/" target="_blank" class="product-cta">Try it once →</a>
+    </a>
+
+    <a href="https://handsome-patience-production-fef8.up.railway.app/" target="_blank" class="product-card reveal">
+      <p class="product-num">03</p>
+      <h3 class="product-name">Confession Box</h3>
+      <p class="product-for">Parents · Families · Children</p>
+      <p class="product-problem">You know something is on their mind. They won't say it.</p>
+      <p class="product-how">A safe, private channel for children to reach their parents. AI helps the child find the words without fear of misinterpretation. The parent receives what their child is carrying. The child who learns to speak honestly here carries that capacity everywhere.</p>
+      <a href="https://handsome-patience-production-fef8.up.railway.app/" target="_blank" class="product-cta">Try it once →</a>
+    </a>
+
+  </div>
+</section>
+
+<div class="privacy-section">
+  <div class="privacy-box reveal">
+    <p><strong>On privacy:</strong> All conversations are anonymous. Nothing you share is read by any person. No data is stored beyond what the tool needs in the moment. What happens here stays here.</p>
+  </div>
+</div>
+
+<div class="realms-bridge reveal">
+  <p>The realm from which all of this emerges.</p>
+  <a href="realms.html">Enter Realms →</a>
+</div>
+
+<footer>
+  <a href="index.html" class="footer-logo">Spheres &amp; Realms</a>
+  <span class="footer-copy">© 2025 Spheres &amp; Realms</span>
+</footer>
+
+<script>
+  const reveals = document.querySelectorAll('.reveal');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry, i) => {
+      if (entry.isIntersecting) {
+        setTimeout(() => entry.target.classList.add('visible'), i * 80);
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.06 });
+  reveals.forEach(el => observer.observe(el));
+</script>
+</body>
+</html>
