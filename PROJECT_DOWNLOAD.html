@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Spheres & Realms — Master Project Document</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap');
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 300;
+    color: #1c1c1a;
+    background: #fdfcfa;
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 4rem 3rem;
+    line-height: 1.75;
+  }
+
+  /* COVER */
+  .cover {
+    border-bottom: 1px solid #b8daea;
+    padding-bottom: 2.5rem;
+    margin-bottom: 3rem;
+  }
+  .cover-eyebrow {
+    font-size: 0.62rem;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: #4a93b8;
+    margin-bottom: 1rem;
+  }
+  .cover h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2.4rem;
+    font-weight: 300;
+    line-height: 1.15;
+    color: #1c1c1a;
+    margin-bottom: 1.2rem;
+  }
+  .cover h1 em { font-style: italic; color: #4a93b8; }
+  .cover-meta {
+    font-size: 0.76rem;
+    color: #88887f;
+    line-height: 1.9;
+  }
+  .cover-meta strong { color: #424240; font-weight: 400; }
+
+  /* SECTIONS */
+  h2 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.45rem;
+    font-weight: 400;
+    color: #1c1c1a;
+    margin-top: 3rem;
+    margin-bottom: 0.8rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid rgba(184,218,234,0.5);
+  }
+  h3 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.1rem;
+    font-weight: 400;
+    color: #1c1c1a;
+    margin-top: 1.8rem;
+    margin-bottom: 0.5rem;
+  }
+  h4 {
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #4a93b8;
+    margin-top: 1.5rem;
+    margin-bottom: 0.4rem;
+  }
+
+  p { margin-bottom: 0.9rem; color: #424240; }
+  p strong { color: #1c1c1a; font-weight: 500; }
+
+  /* BLOCKQUOTES — voice references */
+  blockquote {
+    border-left: 2px solid #c4a882;
+    margin: 1.2rem 0;
+    padding: 0.6rem 1.2rem;
+    background: #f8f4ef;
+  }
+  blockquote p {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1rem;
+    font-style: italic;
+    color: #1c1c1a;
+    margin: 0;
+    line-height: 1.65;
+  }
+
+  /* LISTS */
+  ul, ol { padding-left: 1.4rem; margin-bottom: 0.9rem; }
+  li { color: #424240; margin-bottom: 0.3rem; line-height: 1.7; }
+  li strong { color: #1c1c1a; font-weight: 500; }
+
+  /* PRODUCT CARDS */
+  .product {
+    border: 1px solid rgba(184,218,234,0.4);
+    padding: 1.4rem 1.6rem;
+    margin: 1.2rem 0;
+    background: #fff;
+  }
+  .product-num {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 0.78rem;
+    font-style: italic;
+    color: #4a93b8;
+    margin-bottom: 0.3rem;
+  }
+  .product-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.3rem;
+    font-weight: 400;
+    color: #1c1c1a;
+    margin-bottom: 0.2rem;
+  }
+  .product-for {
+    font-size: 0.66rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #4a93b8;
+    margin-bottom: 0.9rem;
+  }
+  .product-url {
+    font-size: 0.72rem;
+    color: #88887f;
+    margin-bottom: 0.9rem;
+  }
+  .product p { font-size: 0.84rem; margin-bottom: 0.5rem; }
+  .product p em { color: #1c1c1a; font-style: italic; }
+
+  /* FRAMEWORK CARDS */
+  .framework-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: rgba(184,218,234,0.3);
+    margin: 1.2rem 0;
+  }
+  .framework-card {
+    background: #fdfcfa;
+    padding: 1.2rem;
+  }
+  .framework-card-num {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 0.72rem;
+    font-style: italic;
+    color: #c4a882;
+    margin-bottom: 0.4rem;
+  }
+  .framework-card-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1rem;
+    font-weight: 400;
+    color: #1c1c1a;
+    margin-bottom: 0.5rem;
+  }
+  .framework-card p {
+    font-size: 0.78rem;
+    color: #88887f;
+    line-height: 1.7;
+    margin: 0;
+  }
+
+  /* VOICE COLUMNS */
+  .voice-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin: 1rem 0;
+  }
+  .voice-col h4 { margin-top: 0; }
+  .voice-col ul { padding-left: 1rem; }
+  .voice-col li { font-size: 0.82rem; color: #424240; }
+
+  /* CODE / MONOSPACE */
+  code {
+    font-family: 'Courier New', monospace;
+    font-size: 0.8rem;
+    background: #f0ece6;
+    padding: 0.1em 0.4em;
+    color: #1c1c1a;
+  }
+  pre {
+    background: #1c1c1a;
+    color: #fdfcfa;
+    padding: 1rem 1.2rem;
+    font-size: 0.78rem;
+    line-height: 1.65;
+    margin: 0.8rem 0;
+    overflow-x: auto;
+  }
+  pre code { background: none; padding: 0; color: inherit; }
+
+  /* TABLES */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    font-size: 0.82rem;
+  }
+  th {
+    text-align: left;
+    font-size: 0.66rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #88887f;
+    font-weight: 400;
+    padding: 0.5rem 0.8rem;
+    border-bottom: 1px solid rgba(184,218,234,0.5);
+  }
+  td {
+    padding: 0.5rem 0.8rem;
+    border-bottom: 1px solid rgba(184,218,234,0.2);
+    color: #424240;
+    vertical-align: top;
+  }
+
+  /* NOTICE BOXES */
+  .notice {
+    background: #f8f4ef;
+    border-left: 3px solid #4a93b8;
+    padding: 0.9rem 1.2rem;
+    margin: 1rem 0;
+    font-size: 0.84rem;
+  }
+  .notice.gold { border-color: #c4a882; }
+  .notice.dark { background: #1c1c1a; color: rgba(253,252,250,0.7); border-color: #c4a882; }
+  .notice.dark strong { color: #fdfcfa; }
+
+  /* WRONG/RIGHT */
+  .example-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: rgba(184,218,234,0.3); margin: 1rem 0; }
+  .example-wrong { background: #fff5f5; padding: 1rem 1.2rem; }
+  .example-right { background: #f0f8f0; padding: 1rem 1.2rem; }
+  .example-label { font-size: 0.62rem; letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 0.5rem; font-weight: 500; }
+  .example-wrong .example-label { color: #c0392b; }
+  .example-right .example-label { color: #27ae60; }
+  .example-wrong p, .example-right p { font-size: 0.82rem; font-style: italic; margin: 0; color: #424240; }
+
+  /* RULE */
+  hr {
+    border: none;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(184,218,234,0.6) 30%, rgba(184,218,234,0.6) 70%, transparent);
+    margin: 2.5rem 0;
+  }
+
+  /* PRINT */
+  @media print {
+    body { padding: 1.5rem 2rem; font-size: 12px; }
+    .cover h1 { font-size: 2rem; }
+    h2 { page-break-before: auto; }
+    .product, .framework-grid, .notice { page-break-inside: avoid; }
+    @page { margin: 1.5cm 2cm; }
+  }
+</style>
+</head>
+<body>
+
+<!-- COVER -->
+<div class="cover">
+  <p class="cover-eyebrow">Master Project Document</p>
+  <h1>Spheres &amp; <em>Realms</em></h1>
+  <div class="cover-meta">
+    <strong>Organisation:</strong> Spheres &amp; Realms<br>
+    <strong>Sites:</strong> spheresandrealms.in · realmofbrands.com<br>
+    <strong>Last updated:</strong> 2026-03-26<br>
+    <strong>Purpose:</strong> To be read by any AI agent, collaborator, or Claude session before doing any work for this organisation. Do not paraphrase. Do not simplify the voice sections. This document is the continuity.
+  </div>
+</div>
+
+<!-- WHO THIS IS -->
+<h2>Who This Is</h2>
+<p>Spheres &amp; Realms is built by one founder. The framework is original — developed from personal inquiry, not borrowed from existing models.</p>
+<p>The founder operates from a specific kind of intelligence: <strong>pattern-seeing before event-narrating</strong>. They do not ask "what happened." They ask "what keeps happening, and from where." The work moves toward human complexity wherever it asks to be seen — in businesses, classrooms, homes, and in the interior life of individuals.</p>
+<p>This is not a startup with a mission statement. It is an organisation without a fixed destination that moves with a fixed intention: <strong>make the honest exchange possible</strong>.</p>
+
+<hr>
+
+<!-- THE VOICE -->
+<h2>The Voice</h2>
+<p>This must be preserved exactly in every piece of work — copy, agent responses, documentation, anything written under this brand.</p>
+
+<div class="voice-grid">
+  <div class="voice-col">
+    <h4>What the voice is</h4>
+    <ul>
+      <li>Precise without being clinical</li>
+      <li>Warm without being soft</li>
+      <li>Direct without being blunt</li>
+      <li>Holds back until the right moment, then arrives fully</li>
+      <li>Never performative — no exclamation marks, no hype</li>
+      <li>Short sentences earn their place</li>
+      <li>Names the difficulty before offering the solution</li>
+      <li>Respects the intelligence of the person it's speaking to</li>
+      <li>Speaks to the interior, not just the surface concern</li>
+    </ul>
+  </div>
+  <div class="voice-col">
+    <h4>What the voice is not</h4>
+    <ul>
+      <li>Promotional</li>
+      <li>Urgent ("limited time", "don't miss out")</li>
+      <li>Hollow affirmation ("great question!", "absolutely!")</li>
+      <li>Overexplaining</li>
+      <li>Academically detached</li>
+      <li>Spiritual bypass — not vague positivity</li>
+    </ul>
+  </div>
+</div>
+
+<h4>Reference sentences — the exact register</h4>
+
+<blockquote><p>"The conversation that needed to happen — finally does."</p></blockquote>
+<blockquote><p>"The AI does not replace the human exchange. It makes the human exchange possible."</p></blockquote>
+<blockquote><p>"These are not types. They are directions of departure — currents that pull a person from their original vision."</p></blockquote>
+<blockquote><p>"Begin when you're ready. There is no right time. There is only the decision to look honestly at what has been running."</p></blockquote>
+<blockquote><p>"The room breathes easier when we are there — but we cannot breathe inside ourselves."</p></blockquote>
+<blockquote><p>"A map, not a verdict. Built entirely from what you brought."</p></blockquote>
+
+<div class="notice">
+  <strong>When writing anything for this brand:</strong> Read these lines first. Then write. If your sentence couldn't sit next to these without feeling out of place — rewrite it.
+</div>
+
+<hr>
+
+<!-- THE FRAMEWORK -->
+<h2>The Framework (Realms)</h2>
+<p>This is the intellectual foundation. Every product is downstream of this.</p>
+
+<div class="framework-grid">
+  <div class="framework-card">
+    <p class="framework-card-num">I</p>
+    <p class="framework-card-name">The Leaking Hero</p>
+    <p>Cutting ourselves for others. Giving before asked. Explaining to maintain closeness. The room breathes easier when we are there — but we cannot breathe inside ourselves.</p>
+  </div>
+  <div class="framework-card">
+    <p class="framework-card-num">II</p>
+    <p class="framework-card-name">The False Hero</p>
+    <p>Armouring ourselves to override. Productivity as proof. Distance that feels like groundedness. Something real has been built — but the person is not quite inside it.</p>
+  </div>
+  <div class="framework-card">
+    <p class="framework-card-num">III</p>
+    <p class="framework-card-name">The Original Self</p>
+    <p>The action coherent with the moment. Not spiritual quietude — can be sharp, direct, even angry. What makes it original is its source: the moment, not the current.</p>
+  </div>
+</div>
+
+<div class="notice gold">
+  <strong>Critical note:</strong> These are not personality types. They are directions of departure — currents that pull a person away from their original vision. The work does not label. It shows where and how someone leaves themselves, so that choice becomes possible.
+</div>
+
+<hr>
+
+<!-- PRODUCTS -->
+<h2>Products</h2>
+
+<h3>SPHERES — "Where the work meets the world."</h3>
+<p>Three AI-powered tools. Each built around one insight: <strong>the honest signal that could actually change something usually doesn't get said.</strong> Not because people don't have it — but because no channel felt safe or simple enough.</p>
+<p>AI is used not as a feature but as an <strong>intervention</strong> — to hold space for what people find difficult to say directly. The AI does not replace the human exchange. It makes the human exchange possible.</p>
+
+<div class="product">
+  <p class="product-num">01</p>
+  <p class="product-name">Honest Signal</p>
+  <p class="product-for">Businesses · Owners · Customers</p>
+  <p class="product-url">https://aesthetic-panda-3ceb38.netlify.app/</p>
+  <p><em>The problem:</em> Most feedback that could actually change something never gets said — not because people don't have it, but because no channel felt safe or simple enough.</p>
+  <p><em>What it does:</em> A private, anonymous channel between customers and the business they use. AI structures the conversation so what arrives is clear and useful — not just a rating, not just a complaint. The owner gets real signal. The customer gets heard. The relationship stays intact.</p>
+</div>
+
+<div class="product">
+  <p class="product-num">02</p>
+  <p class="product-name">Open Signal</p>
+  <p class="product-for">Teachers · Schools · Educators</p>
+  <p class="product-url">https://tangerine-gumdrop-5cb13f.netlify.app/</p>
+  <p><em>The problem:</em> The teachers who most want honest feedback from students are often the least likely to receive it — because students protect the relationship.</p>
+  <p><em>What it does:</em> An anonymous feedback channel from students to teachers. AI structures the raw response so what arrives is clear, not wounding. The teacher gets the signal that changes the room. Good teachers get what they need to become great ones.</p>
+</div>
+
+<div class="product">
+  <p class="product-num">03</p>
+  <p class="product-name">Confession Box</p>
+  <p class="product-for">Parents · Families · Children</p>
+  <p class="product-url">https://handsome-patience-production-fef8.up.railway.app/</p>
+  <p><em>The problem:</em> You know something is on their mind. They won't say it.</p>
+  <p><em>What it does:</em> A safe, private channel for children to reach their parents. AI helps the child find the words without fear of misinterpretation. The child who learns to speak honestly here carries that capacity everywhere.</p>
+</div>
+
+<div class="notice">
+  <strong>Privacy principle (all Spheres products):</strong> All conversations are anonymous. Nothing is read by any person. No data stored beyond what the tool needs in the moment. This is not a compliance statement. It is an ethic.
+</div>
+
+<h3>REALMS — "Where the interior work lives."</h3>
+<p>The framework beneath everything Spheres &amp; Realms builds. Not a support product — the origin point.</p>
+
+<div class="product">
+  <p class="product-name">The Leaking Hero Tracker</p>
+  <p class="product-url">https://sunny-sfogliatella-03d096.netlify.app/ — Developed by the founder. Original framework. All rights reserved.</p>
+  <p>An 8-day self-observation practice built on the Leaking Hero / False Hero / Original Self framework.</p>
+  <ol style="margin-top:0.6rem;">
+    <li><strong>A conversation first.</strong> AI-guided exchange. Minimum six exchanges before any reflection is offered.</li>
+    <li><strong>Eight days of tracking.</strong> One honest entry per day — the most charged moment, observed through precise questions.</li>
+    <li><strong>Pattern reflection at day four and day eight.</strong> The recurring shape of the departure, the current that kept running.</li>
+    <li><strong>A map, not a verdict.</strong> Built entirely from what you brought. The more honestly you speak, the more specific it becomes.</li>
+  </ol>
+</div>
+
+<h3>KNOW YOUR BRAND (realmofbrands.com)</h3>
+<p>Structured brand intelligence cards. Clean, scannable summaries of what a brand is, what it does, who it's for, and whether it's legitimate.</p>
+<p>Same instinct as everything else here: people deserve clear sight. Brand confusion is a real, daily experience. Someone is about to spend money, trust a company, make a decision. They deserve a clean answer, not a stack of reviews and sponsored results.</p>
+
+<table>
+  <tr><th>Pricing</th><th></th></tr>
+  <tr><td>Free</td><td>3 searches per device, no signup</td></tr>
+  <tr><td>Paid</td><td>₹349 / $4.99 for 150 searches (one-time)</td></tr>
+</table>
+
+<table>
+  <tr><th>Tech Stack</th><th></th></tr>
+  <tr><td>Frontend</td><td>Static HTML — index.html, search.html, pricing.html</td></tr>
+  <tr><td>Backend</td><td>Node.js on Railway</td></tr>
+  <tr><td>Backend URL</td><td>https://know-your-brand-production.up.railway.app</td></tr>
+  <tr><td>Domain</td><td>realmofbrands.com</td></tr>
+  <tr><td>Repo</td><td>know-your-brand (PRIVATE)</td></tr>
+</table>
+
+<hr>
+
+<!-- THE BRAND AGENT -->
+<h2>The Brand Agent</h2>
+<p>File: <code>agent/brand_agent.py</code> — monitors Quora and Twitter/X for brand confusion signals. Drafts helpful responses mentioning realmofbrands.com naturally. Saves all drafts for human review. <strong>Nothing posts automatically. Ever.</strong></p>
+
+<h4>How the agent should sound</h4>
+
+<div class="example-grid">
+  <div class="example-wrong">
+    <p class="example-label">Wrong</p>
+    <p>"Hey! Check out realmofbrands.com — it's amazing for brand research!"</p>
+  </div>
+  <div class="example-right">
+    <p class="example-label">Right</p>
+    <p>"Brand legitimacy can be surprisingly hard to verify quickly. realmofbrands.com gives you a clean structured overview — what they do, who they're for, whether they're established. Worth a look before you decide."</p>
+  </div>
+</div>
+
+<p>The difference: the right version names the difficulty first. Then offers the path. Briefly. Without performing enthusiasm.</p>
+
+<pre><code>cd agent
+pip install -r requirements.txt
+cp .env.example .env     # add API keys
+python brand_agent.py
+# Open agent/drafts/YYYY-MM-DD/*.html to review</code></pre>
+
+<table>
+  <tr><th>Key</th><th>Source</th></tr>
+  <tr><td><code>TWITTER_BEARER_TOKEN</code></td><td>developer.twitter.com</td></tr>
+  <tr><td><code>SERP_API_KEY</code></td><td>serpapi.com</td></tr>
+  <tr><td><code>ANTHROPIC_API_KEY</code></td><td>console.anthropic.com</td></tr>
+</table>
+
+<hr>
+
+<!-- FOR ANY AI -->
+<h2>For Any AI Agent Working on This</h2>
+
+<div class="notice dark">
+  Before you write a single word of copy, before you draft a response, before you name a feature — read the voice section above. Then ask: does this sound like it belongs next to <em>"Begin when you're ready. There is no right time."</em>?<br><br>
+  The intelligence operating here sees <strong>pattern before event</strong>, interior before exterior, and the human need before the product solution. That is the orientation. Match it.<br><br>
+  Do not post anything automatically. Do not push to GitHub without being asked. Do not add features that weren't requested. Do not add enthusiasm to compensate for uncertainty.<br><br>
+  <strong>When in doubt: say less. Let the work speak.</strong>
+</div>
+
+<hr>
+
+<!-- FILE MAP -->
+<h2>Repository &amp; File Map</h2>
+
+<pre><code>spheresandrealms-site/       ← spheresandrealms.in
+  index.html
+  spheres.html
+  realms.html
+  PROJECT.md                 ← canonical version of this document
+  agent/
+    brand_agent.py
+    requirements.txt
+    .env.example
+    drafts/                  ← gitignored
+
+know-your-brand/             ← PRIVATE repo
+  index.html
+  search.html
+  pricing.html
+  server.js</code></pre>
+
+<hr>
+
+<!-- SESSION LOG -->
+<h2>Session Log</h2>
+<table>
+  <tr><th>Date</th><th>Work</th></tr>
+  <tr><td>2026-03-26</td><td>Full PROJECT.md written from source files + voice research. Brand agent v1 built. HTML export created.</td></tr>
+</table>
+
+</body>
+</html>
