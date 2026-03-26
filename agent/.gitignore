@@ -1,0 +1,4 @@
+.env
+drafts/
+__pycache__/
+*.pyc
