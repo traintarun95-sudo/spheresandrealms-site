@@ -233,7 +233,7 @@ def get_brand_card(brand: str) -> Optional[dict]:
 # Stream 1: Brand discussions — live threads about this specific brand
 # ---------------------------------------------------------------------------
 
-MIN_SCORE = 0.4   # minimum Tavily relevance score — drop weak/dead threads
+MIN_SCORE = 0.7   # minimum Tavily relevance score — only high confidence threads
 
 def find_brand_discussions(brand: str, news_title: str) -> list[dict]:
     # Anchor searches to the actual news event — find conversations about this specific story
@@ -433,11 +433,15 @@ def notify_result(brand: str, news_title: str, thread: dict, draft: str) -> None
     platform     = platform_from_url(thread["url"]).upper()
     stream_label = "Brand thread" if thread.get("stream") == "brand" else "Problem-space thread"
 
+    score = thread.get("score", 0)
+    published = thread.get("published", "")
+    meta = f"score {score:.2f}" + (f" · {published[:10]}" if published else "")
+
     message = (
         f"<b>{brand}</b>  —  {stream_label}\n"
         f"📰 {news_title}\n"
         f"───────────────\n"
-        f"<b>{platform}</b>\n"
+        f"<b>{platform}</b>  {meta}\n"
         f"{thread['url']}\n"
         f"───────────────\n"
         f"{draft}"
