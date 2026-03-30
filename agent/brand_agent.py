@@ -57,10 +57,22 @@ BRAND_LOG_DAYS     = 7      # days before same brand can repeat
 DISCUSSION_PLATFORMS = ["quora.com", "reddit.com", "linkedin.com"]
 
 NEWS_SOURCES = [
-    "techcrunch.com", "economictimes.indiatimes.com", "yourstory.com",
-    "livemint.com", "gulfnews.com", "arabianbusiness.com", "techinasia.com",
-    "businessdayng.com", "rappler.com", "forbesmiddleeast.com",
-    "wamda.com", "inc42.com", "thebridge.jp", "bloomberglinea.com",
+    # Global
+    "techcrunch.com",
+    "bloomberg.com",
+    "reuters.com",
+    "ft.com",
+    # Gulf
+    "gulfnews.com",
+    "arabianbusiness.com",
+    "forbesmiddleeast.com",
+    "wamda.com",
+    # Asia/emerging
+    "techinasia.com",
+    "thebridge.jp",
+    "bloomberglinea.com",
+    "rappler.com",
+    "businessdayng.com",
 ]
 
 NEWS_QUERIES = [
