@@ -314,32 +314,28 @@ def get_brand_card(brand: str) -> Optional[dict]:
 MIN_SCORE = 0.7   # minimum Tavily relevance score — only high confidence threads
 
 def find_brand_discussions(brand: str, news_title: str) -> list[dict]:
-    # Anchor searches to the actual news event — find conversations about this specific story
+    # Use site-specific queries to force actual discussion posts, not pages
+    year = datetime.date.today().year
     queries = [
-        f"{brand} {news_title[:60]}",
-        f"{brand} site:quora.com",
-        f"{brand} site:linkedin.com",
-        f"what is {brand}",
-        f"is {brand} legit",
-        f"{brand} Dubai UAE",
-        f"{brand} Middle East",
-        f"{brand} India",
+        f'site:linkedin.com/posts "{brand}" {year}',
+        f'site:linkedin.com/posts "{brand}"',
+        f'site:quora.com "{brand}"',
+        f'site:quora.com "what is {brand}"',
+        f'site:quora.com "{brand}" {year}',
     ]
     results = []
     seen: set = set()
 
-    for days_window in [7, 30]:
-        for q in queries:
-            for r in tavily_search(q, domains=DISCUSSION_PLATFORMS, days=days_window, max_results=2):
-                if r["url"] not in seen and r.get("score", 0) >= MIN_SCORE:
-                    seen.add(r["url"])
-                    r["stream"] = "brand"
-                    results.append(r)
-            if len(results) >= 5:
-                break
-            time.sleep(0.2)
+    for q in queries:
+        for r in tavily_search(q, days=30, max_results=3):
+            url = r["url"]
+            if url not in seen and is_discussion_url(url) and r.get("score", 0) >= MIN_SCORE:
+                seen.add(url)
+                r["stream"] = "brand"
+                results.append(r)
         if len(results) >= 5:
             break
+        time.sleep(0.2)
 
     results.sort(key=lambda x: x.get("score", 0), reverse=True)
     return results[:5]
@@ -405,22 +401,27 @@ def derive_problem_queries(brand: str, card: Optional[dict]) -> list[str]:
 
 
 def find_resonance_threads(brand: str, card: Optional[dict]) -> list[dict]:
-    queries = derive_problem_queries(brand, card)
+    year = datetime.date.today().year
+    base_queries = derive_problem_queries(brand, card)
+    # Force site-specific queries for actual discussion posts
+    queries = []
+    for q in base_queries:
+        queries.append(f'site:quora.com "{q}"')
+        queries.append(f'site:linkedin.com/posts "{q}" {year}')
+
     results = []
     seen: set = set()
 
-    for days_window in [2, 7]:
-        for q in queries:
-            for r in tavily_search(q, domains=DISCUSSION_PLATFORMS, days=days_window, max_results=2):
-                if r["url"] not in seen and r.get("score", 0) >= MIN_SCORE:
-                    seen.add(r["url"])
-                    r["stream"] = "resonance"
-                    results.append(r)
-            if len(results) >= 5:
-                break
-            time.sleep(0.2)
+    for q in queries:
+        for r in tavily_search(q, days=30, max_results=2):
+            url = r["url"]
+            if url not in seen and is_discussion_url(url) and r.get("score", 0) >= MIN_SCORE:
+                seen.add(url)
+                r["stream"] = "resonance"
+                results.append(r)
         if len(results) >= 5:
             break
+        time.sleep(0.2)
 
     results.sort(key=lambda x: x.get("score", 0), reverse=True)
     return results[:5]
