@@ -124,15 +124,26 @@ def tavily_search(
     try:
         resp = requests.post("https://api.tavily.com/search", json=payload, timeout=15)
         resp.raise_for_status()
-        return [
-            {
-                "title":   r.get("title", ""),
-                "url":     r.get("url", ""),
-                "snippet": r.get("content", ""),
-                "score":   r.get("score", 0),
-            }
-            for r in resp.json().get("results", [])
-        ]
+        results = []
+        for r in resp.json().get("results", []):
+            published = r.get("published_date", "")
+            # Hard date filter — drop anything older than 30 days
+            if published:
+                try:
+                    pub_date = datetime.datetime.strptime(published[:10], "%Y-%m-%d").date()
+                    age_days = (datetime.date.today() - pub_date).days
+                    if age_days > 30:
+                        continue
+                except Exception:
+                    pass
+            results.append({
+                "title":     r.get("title", ""),
+                "url":       r.get("url", ""),
+                "snippet":   r.get("content", ""),
+                "score":     r.get("score", 0),
+                "published": published,
+            })
+        return results
     except Exception as e:
         print(f"  [tavily] Failed ({query[:40]}): {e}")
         return []
@@ -385,15 +396,14 @@ def generate_draft(
         {card_context}
 
         Write a response in exactly 3 sentences:
-        1. One sentence saying what {brand} actually is — plain and factual, as if explaining to someone who just heard the name
-        2. One sentence of simple context — what they do or who they're for, nothing more
-        3. One sentence dropping {CANONICAL_URL} — for anyone in the thread who wants a clean picture
+        1. One sentence saying what {brand} actually is — plain, factual, for someone who just heard the name
+        2. One sentence on what they sell or who they are for — nothing more
+        3. "For anyone wondering what {brand} actually is — {CANONICAL_URL} has a clean card on them."
 
         Rules:
-        - You are speaking to the person in the room who doesn't quite know yet — not the analysts
-        - Even if the thread is full of experts, write for the one person wondering what this brand actually is
-        - No analysis, no signals, no opinion, no trajectory
-        - Drop the card and leave. That is the whole job.
+        - The product {CANONICAL_URL} must appear in sentence 3, exactly as shown above
+        - You are speaking to the person who doesn't know yet — not the analysts
+        - No analysis, no opinion, no signals, no trajectory
         - Platform tone: quora = clear, reddit = direct, linkedin = clean
         - Never mention AI or any technology behind the product
         - No exclamation marks
