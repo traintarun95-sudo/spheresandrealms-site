@@ -44,7 +44,7 @@ CANONICAL_URL      = "https://www.realmofbrands.com"
 
 def brand_card_url(brand: str) -> str:
     """Direct link to the brand's card on KYB."""
-    return f"{CANONICAL_URL}/search?brand={urllib.parse.quote_plus(brand)}"
+    return f"{CANONICAL_URL}/search.html?brand={urllib.parse.quote_plus(brand)}"
 
 # URL patterns that are pages, not conversations — filter these out
 NON_DISCUSSION_PATTERNS = [
@@ -489,9 +489,12 @@ def run():
         print(f"\n[brand] {brand}")
         print(f"  News: {story['title'][:80]}")
 
-        # Get brand card
+        # Get brand card — skip if not a clean card (disambig or unknown)
         card = get_brand_card(brand)
-        print(f"  Card: {'retrieved' if card else 'unavailable'}")
+        if not card or card.get("type") != "card":
+            print(f"  [skip] {brand} — no clean card (type: {card.get('type') if card else 'none'})")
+            continue
+        print(f"  Card: retrieved")
 
         # Stream 1: brand discussions anchored to today's news
         print("  [stream 1] Finding brand discussions...")
