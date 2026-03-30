@@ -211,13 +211,21 @@ def get_brand_card(brand: str) -> Optional[dict]:
 # Stream 1: Brand discussions — live threads about this specific brand
 # ---------------------------------------------------------------------------
 
+MIN_SCORE = 0.4   # minimum Tavily relevance score — drop weak/dead threads
+
 def find_brand_discussions(brand: str) -> list[dict]:
+    # Core discovery queries + regional variants to cover Gulf, India, SEA, Africa, global
     queries = [
         f"what is {brand}",
         f"has anyone heard of {brand}",
-        f"{brand} worth it",
         f"is {brand} legit",
         f"anyone tried {brand}",
+        f"{brand} worth it",
+        f"{brand} Dubai UAE",
+        f"{brand} Middle East",
+        f"{brand} India",
+        f"{brand} Southeast Asia",
+        f"{brand} Africa",
     ]
     results = []
     seen: set = set()
@@ -225,7 +233,7 @@ def find_brand_discussions(brand: str) -> list[dict]:
     for days_window in [2, 7]:
         for q in queries:
             for r in tavily_search(q, domains=DISCUSSION_PLATFORMS, days=days_window, max_results=2):
-                if r["url"] not in seen:
+                if r["url"] not in seen and r.get("score", 0) >= MIN_SCORE:
                     seen.add(r["url"])
                     r["stream"] = "brand"
                     results.append(r)
@@ -235,6 +243,8 @@ def find_brand_discussions(brand: str) -> list[dict]:
         if len(results) >= 5:
             break
 
+    # Sort by score — highest engagement first
+    results.sort(key=lambda x: x.get("score", 0), reverse=True)
     return results[:5]
 
 
@@ -264,6 +274,8 @@ def derive_problem_queries(brand: str, card: Optional[dict]) -> list[str]:
         where people are asking questions that a brand intelligence tool would directly answer.
         Focus on the pain: brand confusion, evaluating companies, purchase decisions, industry questions.
         Do NOT include the brand name in the queries — these are problem-space threads, not brand-specific.
+        Include geographic context where relevant — Gulf, UAE, Dubai, India, Southeast Asia, Africa.
+        Prioritise threads where someone genuinely doesn't know and is asking — not expert debates.
 
         {card_summary}
 
@@ -303,7 +315,7 @@ def find_resonance_threads(brand: str, card: Optional[dict]) -> list[dict]:
     for days_window in [2, 7]:
         for q in queries:
             for r in tavily_search(q, domains=DISCUSSION_PLATFORMS, days=days_window, max_results=2):
-                if r["url"] not in seen:
+                if r["url"] not in seen and r.get("score", 0) >= MIN_SCORE:
                     seen.add(r["url"])
                     r["stream"] = "resonance"
                     results.append(r)
@@ -313,6 +325,7 @@ def find_resonance_threads(brand: str, card: Optional[dict]) -> list[dict]:
         if len(results) >= 5:
             break
 
+    results.sort(key=lambda x: x.get("score", 0), reverse=True)
     return results[:5]
 
 
