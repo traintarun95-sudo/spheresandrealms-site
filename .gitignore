@@ -1,0 +1,11 @@
+# Environment variables — never commit
+agent/.env
+
+# Agent runtime output — local only
+agent/logs/
+agent/drafts/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
