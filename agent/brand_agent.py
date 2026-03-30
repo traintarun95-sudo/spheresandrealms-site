@@ -366,9 +366,44 @@ def generate_draft(
     card: Optional[dict],
 ) -> str:
     card_url = brand_card_url(brand)
-    return f"Here is a quick snapshot of what {brand} is.\nFor the full card — {card_url}"
 
-    pass  # draft is generated in the return statement above
+    if not ANTHROPIC_API_KEY:
+        return f"Here is a quick snapshot of what {brand} is.\nFor the full card — {card_url}"
+
+    what_is = card.get("what_is", "") if card and card.get("type") == "card" else ""
+
+    prompt = textwrap.dedent(f"""
+        Thread: {thread['title']}
+        Brand: {brand}
+        What {brand} is: {what_is}
+        News: {news_title}
+
+        Write one sentence — specific to this thread, for the person who doesn't know this brand yet.
+        Orient them: what is this brand, why does this thread matter to them.
+        Not analysis. Not opinion. Just a clean, specific opening line.
+        Then on the next line write exactly: For the full card — {card_url}
+
+        Two lines total. Nothing else.
+    """).strip()
+
+    try:
+        resp = requests.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "x-api-key": ANTHROPIC_API_KEY,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json",
+            },
+            json={
+                "model":      "claude-haiku-4-5-20251001",
+                "max_tokens": 100,
+                "messages":   [{"role": "user", "content": prompt}],
+            },
+            timeout=20,
+        )
+        return resp.json()["content"][0]["text"].strip()
+    except Exception:
+        return f"Here is a quick snapshot of what {brand} is.\nFor the full card — {card_url}"
 
 
 # ---------------------------------------------------------------------------
