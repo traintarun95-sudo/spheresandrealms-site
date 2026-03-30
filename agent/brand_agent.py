@@ -20,6 +20,7 @@ import textwrap
 from pathlib import Path
 from typing import Optional
 
+import urllib.parse
 import requests
 from dotenv import load_dotenv
 
@@ -43,8 +44,7 @@ CANONICAL_URL      = "https://www.realmofbrands.com"
 
 def brand_card_url(brand: str) -> str:
     """Direct link to the brand's card on KYB."""
-    slug = brand.replace(" ", "+")
-    return f"{CANONICAL_URL}/search?brand={slug}"
+    return f"{CANONICAL_URL}/search?brand={urllib.parse.quote_plus(brand)}"
 
 # URL patterns that are pages, not conversations — filter these out
 NON_DISCUSSION_PATTERNS = [
@@ -364,83 +364,11 @@ def generate_draft(
     news_title: str,
     thread: dict,
     card: Optional[dict],
-) -> Optional[str]:
-    if not ANTHROPIC_API_KEY:
-        return None
+) -> str:
+    card_url = brand_card_url(brand)
+    return f"Here is a quick snapshot of what {brand} is.\nFor the full card — {card_url}"
 
-    platform = platform_from_url(thread["url"])
-    stream   = thread.get("stream", "brand")
-
-    card_context = ""
-    if card and card.get("type") == "card":
-        rivals = card.get("rivals", [])
-        rivals_str = ", ".join(rivals) if isinstance(rivals, list) else str(rivals)
-        growth = card.get("growth", {})
-        growth_str = growth.get("detail", "") if isinstance(growth, dict) else str(growth)
-        pricing = card.get("pricing", {})
-        pricing_str = pricing.get("detail", "") if isinstance(pricing, dict) else str(pricing)
-        card_context = (
-            f"\nBrand card data:\n"
-            f"- What it is: {card.get('what_is', '')}\n"
-            f"- Sells: {card.get('sells', '')}\n"
-            f"- For: {card.get('for', '')}\n"
-            f"- Pricing: {pricing_str}\n"
-            f"- Position: {card.get('position', '')}\n"
-            f"- Rivals: {rivals_str}\n"
-            f"- Underdog: {card.get('underdog', '')}\n"
-            f"- Growth: {growth_str}\n"
-            f"- Fun fact: {card.get('fun_fact', '')}\n"
-        )
-
-    if stream == "brand":
-        context_note = f"The thread is directly about {brand}. News that surfaced it: {news_title}"
-    else:
-        context_note = f"The thread is about a problem space that {brand} operates in. News context: {news_title}"
-
-    prompt = textwrap.dedent(f"""
-        You are writing a response to this thread on behalf of a brand clarity tool.
-        Your job is not to analyse. Your job is to clean the noise — tell people what a brand actually is.
-
-        Thread title: {thread['title']}
-        Platform: {platform}
-        {context_note}
-        {card_context}
-
-        Write a response in exactly 3 sentences:
-        1. One sentence saying what {brand} actually is — plain, factual, for someone who just heard the name
-        2. One sentence on what they sell or who they are for — nothing more
-        3. "For anyone wondering what {brand} actually is — {CANONICAL_URL} has a clean card on them."
-
-        Rules:
-        - The product {CANONICAL_URL} must appear in sentence 3, exactly as shown above
-        - You are speaking to the person who doesn't know yet — not the analysts
-        - No analysis, no opinion, no signals, no trajectory
-        - Platform tone: quora = clear, reddit = direct, linkedin = clean
-        - Never mention AI or any technology behind the product
-        - No exclamation marks
-
-        Return only the response text. Nothing else.
-    """).strip()
-
-    try:
-        resp = requests.post(
-            "https://api.anthropic.com/v1/messages",
-            headers={
-                "x-api-key": ANTHROPIC_API_KEY,
-                "anthropic-version": "2023-06-01",
-                "content-type": "application/json",
-            },
-            json={
-                "model":      "claude-haiku-4-5-20251001",
-                "max_tokens": 200,
-                "messages":   [{"role": "user", "content": prompt}],
-            },
-            timeout=20,
-        )
-        return resp.json()["content"][0]["text"].strip()
-    except Exception as e:
-        print(f"  [draft] Failed: {e}")
-        return None
+    pass  # draft is generated in the return statement above
 
 
 # ---------------------------------------------------------------------------
