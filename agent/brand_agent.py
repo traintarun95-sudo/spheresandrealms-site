@@ -30,7 +30,7 @@ load_dotenv()
 # ---------------------------------------------------------------------------
 
 ANTHROPIC_API_KEY    = os.getenv("ANTHROPIC_API_KEY", "")
-SERP_API_KEY         = os.getenv("SERP_API_KEY", "")
+TAVILY_API_KEY       = os.getenv("TAVILY_API_KEY", "")
 TWITTER_BEARER_TOKEN = os.getenv("TWITTER_BEARER_TOKEN", "")
 KYB_API_URL          = os.getenv("KYB_API_URL", "https://know-your-brand-production.up.railway.app")
 
@@ -157,28 +157,27 @@ def check_kyb_api() -> bool:
 
 
 # ---------------------------------------------------------------------------
-# News search via SerpAPI
+# News search via Tavily
 # ---------------------------------------------------------------------------
 
 def search_brand_news(query: str, max_results: int = 5) -> list[dict]:
     """Search for brand news stories. Returns list of story dicts."""
-    if not SERP_API_KEY:
+    if not TAVILY_API_KEY:
         return []
 
-    # Build source restriction
-    source_filter = " OR ".join([f"site:{s}" for s in NEWS_SOURCES[:6]])
-    full_query = f"({query}) ({source_filter})"
-
-    params = {
-        "engine":   "google",
-        "q":        full_query,
-        "api_key":  SERP_API_KEY,
-        "num":      max_results,
-        "tbs":      "qdr:d",    # last 24 hours only
-    }
-
     try:
-        resp = requests.get("https://serpapi.com/search", params=params, timeout=15)
+        resp = requests.post(
+            "https://api.tavily.com/search",
+            json={
+                "api_key":        TAVILY_API_KEY,
+                "query":          query,
+                "search_depth":   "basic",
+                "max_results":    max_results,
+                "days":           1,              # last 24 hours only
+                "include_domains": NEWS_SOURCES,
+            },
+            timeout=15,
+        )
         resp.raise_for_status()
         data = resp.json()
     except Exception as e:
@@ -186,12 +185,12 @@ def search_brand_news(query: str, max_results: int = 5) -> list[dict]:
         return []
 
     stories = []
-    for item in data.get("organic_results", [])[:max_results]:
+    for item in data.get("results", [])[:max_results]:
         stories.append({
             "title":   item.get("title", ""),
-            "snippet": item.get("snippet", ""),
-            "url":     item.get("link", ""),
-            "source":  item.get("displayed_link", ""),
+            "snippet": item.get("content", ""),
+            "url":     item.get("url", ""),
+            "source":  item.get("url", "").split("/")[2] if item.get("url") else "",
         })
 
     return stories
@@ -287,14 +286,14 @@ def score_card_richness(card: dict) -> tuple[int, str]:
         return 0, "none"
 
     fields = [
-        card.get("what_it_sells"),
-        card.get("pricing_tier"),
+        card.get("sells"),
+        card.get("pricing"),
         card.get("rivals"),
         card.get("underdog"),
-        card.get("target_audience"),
-        card.get("growth_signal"),
-        card.get("fact_of_relevance"),
-        card.get("market_position"),
+        card.get("for"),
+        card.get("growth"),
+        card.get("fun_fact"),
+        card.get("position"),
     ]
 
     populated = sum(1 for f in fields if f and str(f).strip() and str(f).strip().lower() not in ["unknown", "n/a", "none"])
@@ -346,14 +345,14 @@ def generate_draft(
     if card and card_quality in ("rich", "decent"):
         card_context = f"""
 Available brand card data:
-- What it sells: {card.get('what_it_sells', 'N/A')}
-- Pricing tier: {card.get('pricing_tier', 'N/A')}
-- Target audience: {card.get('target_audience', 'N/A')}
-- Market position: {card.get('market_position', 'N/A')}
-- Rivals: {card.get('rivals', 'N/A')}
+- What it sells: {card.get('sells', 'N/A')}
+- Pricing: {card.get('pricing', {}).get('detail', 'N/A') if isinstance(card.get('pricing'), dict) else card.get('pricing', 'N/A')}
+- For: {card.get('for', 'N/A')}
+- Position: {card.get('position', 'N/A')}
+- Rivals: {', '.join(card.get('rivals', [])) if isinstance(card.get('rivals'), list) else card.get('rivals', 'N/A')}
 - Underdog: {card.get('underdog', 'N/A')}
-- Growth signal: {card.get('growth_signal', 'N/A')}
-- Fact of relevance: {card.get('fact_of_relevance', 'N/A')}
+- Growth: {card.get('growth', {}).get('detail', 'N/A') if isinstance(card.get('growth'), dict) else card.get('growth', 'N/A')}
+- Fun fact: {card.get('fun_fact', 'N/A')}
 """
         format_instruction = f"Use the card data above to write a specific, accurate response. End with: {CANONICAL_URL}"
     elif card_quality == "thin":
@@ -655,7 +654,7 @@ def run():
 
     if not all_drafts:
         print("\n[done] No drafts generated this run.")
-        print("Check: SERP_API_KEY set? News sources returning results?")
+        print("Check: TAVILY_API_KEY set? News sources returning results?")
         return
 
     # Save drafts
