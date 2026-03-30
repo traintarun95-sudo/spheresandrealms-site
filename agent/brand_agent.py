@@ -213,24 +213,22 @@ def get_brand_card(brand: str) -> Optional[dict]:
 
 MIN_SCORE = 0.4   # minimum Tavily relevance score — drop weak/dead threads
 
-def find_brand_discussions(brand: str) -> list[dict]:
-    # Core discovery queries + regional variants to cover Gulf, India, SEA, Africa, global
+def find_brand_discussions(brand: str, news_title: str) -> list[dict]:
+    # Anchor searches to the actual news event — find conversations about this specific story
     queries = [
+        f"{brand} {news_title[:60]}",
+        f"{brand} site:quora.com",
+        f"{brand} site:linkedin.com",
         f"what is {brand}",
-        f"has anyone heard of {brand}",
         f"is {brand} legit",
-        f"anyone tried {brand}",
-        f"{brand} worth it",
         f"{brand} Dubai UAE",
         f"{brand} Middle East",
         f"{brand} India",
-        f"{brand} Southeast Asia",
-        f"{brand} Africa",
     ]
     results = []
     seen: set = set()
 
-    for days_window in [2, 7]:
+    for days_window in [7, 30]:
         for q in queries:
             for r in tavily_search(q, domains=DISCUSSION_PLATFORMS, days=days_window, max_results=2):
                 if r["url"] not in seen and r.get("score", 0) >= MIN_SCORE:
@@ -243,7 +241,6 @@ def find_brand_discussions(brand: str) -> list[dict]:
         if len(results) >= 5:
             break
 
-    # Sort by score — highest engagement first
     results.sort(key=lambda x: x.get("score", 0), reverse=True)
     return results[:5]
 
@@ -508,9 +505,9 @@ def run():
         card = get_brand_card(brand)
         print(f"  Card: {'retrieved' if card else 'unavailable'}")
 
-        # Stream 1: brand discussions
+        # Stream 1: brand discussions anchored to today's news
         print("  [stream 1] Finding brand discussions...")
-        brand_threads = find_brand_discussions(brand)
+        brand_threads = find_brand_discussions(brand, story["title"])
         print(f"    {len(brand_threads)} threads")
 
         # Stream 2: problem-space threads
