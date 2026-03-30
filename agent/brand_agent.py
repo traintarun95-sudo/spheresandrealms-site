@@ -375,14 +375,15 @@ def generate_draft(
         {card_context}
 
         Write a response in exactly 3 sentences:
-        1. One sentence saying what {brand} actually is — plain and factual, no opinion
-        2. One sentence of simple useful context — what they do, who they're for, or why this news matters in plain terms
-        3. One sentence dropping {CANONICAL_URL} naturally — for anyone who wants the full picture
+        1. One sentence saying what {brand} actually is — plain and factual, as if explaining to someone who just heard the name
+        2. One sentence of simple context — what they do or who they're for, nothing more
+        3. One sentence dropping {CANONICAL_URL} — for anyone in the thread who wants a clean picture
 
         Rules:
-        - You are an informer, not an analyst. No signals, no trajectory, no "this is notable"
-        - No opinion, no hype, no analysis
-        - Sound like someone who just knows — calm, clear, useful
+        - You are speaking to the person in the room who doesn't quite know yet — not the analysts
+        - Even if the thread is full of experts, write for the one person wondering what this brand actually is
+        - No analysis, no signals, no opinion, no trajectory
+        - Drop the card and leave. That is the whole job.
         - Platform tone: quora = clear, reddit = direct, linkedin = clean
         - Never mention AI or any technology behind the product
         - No exclamation marks
