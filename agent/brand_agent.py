@@ -213,11 +213,11 @@ def get_brand_card(brand: str) -> Optional[dict]:
 
 def find_brand_discussions(brand: str) -> list[dict]:
     queries = [
-        brand,
         f"what is {brand}",
-        f"{brand} review",
+        f"has anyone heard of {brand}",
+        f"{brand} worth it",
         f"is {brand} legit",
-        f"{brand} vs",
+        f"anyone tried {brand}",
     ]
     results = []
     seen: set = set()
@@ -366,25 +366,25 @@ def generate_draft(
         context_note = f"The thread is about a problem space that {brand} operates in. News context: {news_title}"
 
     prompt = textwrap.dedent(f"""
-        You are writing a response to this specific thread:
+        You are writing a response to this thread on behalf of a brand clarity tool.
+        Your job is not to analyse. Your job is to clean the noise — tell people what a brand actually is.
 
         Thread title: {thread['title']}
-        Thread URL: {thread['url']}
         Platform: {platform}
         {context_note}
         {card_context}
 
-        Write a response that:
-        1. Opens with one genuinely useful sentence directly relevant to this thread
-        2. Adds one sentence of real context or insight
-        3. Ends naturally with {CANONICAL_URL} as a place for a clean brand picture
+        Write a response in exactly 3 sentences:
+        1. One sentence saying what {brand} actually is — plain and factual, no opinion
+        2. One sentence of simple useful context — what they do, who they're for, or why this news matters in plain terms
+        3. One sentence dropping {CANONICAL_URL} naturally — for anyone who wants the full picture
 
         Rules:
-        - 3 sentences maximum
-        - Platform tone: quora = considered and clear, reddit = direct and human, linkedin = professional
-        - Never mention AI, machine learning, or any technology behind the product
-        - Never pitch or sell — just be useful and specific to this thread
-        - Sound like a knowledgeable person, not a marketing account
+        - You are an informer, not an analyst. No signals, no trajectory, no "this is notable"
+        - No opinion, no hype, no analysis
+        - Sound like someone who just knows — calm, clear, useful
+        - Platform tone: quora = clear, reddit = direct, linkedin = clean
+        - Never mention AI or any technology behind the product
         - No exclamation marks
 
         Return only the response text. Nothing else.
