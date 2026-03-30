@@ -40,6 +40,17 @@ BRAND_LOG = LOG_DIR / "brand_log.json"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 CANONICAL_URL      = "https://www.realmofbrands.com"
+
+def brand_card_url(brand: str) -> str:
+    """Direct link to the brand's card on KYB."""
+    slug = brand.replace(" ", "+")
+    return f"{CANONICAL_URL}/search?brand={slug}"
+
+# URL patterns that are pages, not conversations — filter these out
+NON_DISCUSSION_PATTERNS = [
+    "/company/", "/in/", "/showcase/", "/life", "/jobs",
+    "linkedin.com/pulse/",  # articles not discussions
+]
 MAX_BRANDS         = 5      # max brands to process per run
 BRAND_LOG_DAYS     = 7      # days before same brand can repeat
 
