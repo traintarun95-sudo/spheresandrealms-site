@@ -221,15 +221,20 @@ def find_brand_discussions(brand: str) -> list[dict]:
     ]
     results = []
     seen: set = set()
-    for q in queries:
-        for r in tavily_search(q, domains=DISCUSSION_PLATFORMS, days=7, max_results=2):
-            if r["url"] not in seen:
-                seen.add(r["url"])
-                r["stream"] = "brand"
-                results.append(r)
+
+    for days_window in [2, 7]:
+        for q in queries:
+            for r in tavily_search(q, domains=DISCUSSION_PLATFORMS, days=days_window, max_results=2):
+                if r["url"] not in seen:
+                    seen.add(r["url"])
+                    r["stream"] = "brand"
+                    results.append(r)
+            if len(results) >= 5:
+                break
+            time.sleep(0.2)
         if len(results) >= 5:
             break
-        time.sleep(0.2)
+
     return results[:5]
 
 
@@ -294,15 +299,20 @@ def find_resonance_threads(brand: str, card: Optional[dict]) -> list[dict]:
     queries = derive_problem_queries(brand, card)
     results = []
     seen: set = set()
-    for q in queries:
-        for r in tavily_search(q, domains=DISCUSSION_PLATFORMS, days=7, max_results=2):
-            if r["url"] not in seen:
-                seen.add(r["url"])
-                r["stream"] = "resonance"
-                results.append(r)
+
+    for days_window in [2, 7]:
+        for q in queries:
+            for r in tavily_search(q, domains=DISCUSSION_PLATFORMS, days=days_window, max_results=2):
+                if r["url"] not in seen:
+                    seen.add(r["url"])
+                    r["stream"] = "resonance"
+                    results.append(r)
+            if len(results) >= 5:
+                break
+            time.sleep(0.2)
         if len(results) >= 5:
             break
-        time.sleep(0.2)
+
     return results[:5]
 
 
