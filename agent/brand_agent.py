@@ -32,6 +32,7 @@ load_dotenv()
 
 ANTHROPIC_API_KEY  = os.getenv("ANTHROPIC_API_KEY", "")
 TAVILY_API_KEY     = os.getenv("TAVILY_API_KEY", "")
+BRAVE_API_KEY      = os.getenv("BRAVE_API_KEY", "")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID   = os.getenv("TELEGRAM_CHAT_ID", "")
 KYB_API_URL        = os.getenv("KYB_API_URL", "https://know-your-brand-production.up.railway.app")
@@ -47,14 +48,35 @@ def brand_card_url(brand: str) -> str:
     return f"{CANONICAL_URL}/search.html?brand={urllib.parse.quote_plus(brand)}"
 
 # URL patterns that are pages, not conversations — filter these out
-NON_DISCUSSION_PATTERNS = [
-    "/company/", "/in/", "/showcase/", "/life", "/jobs",
-    "linkedin.com/pulse/",  # articles not discussions
-]
 MAX_BRANDS         = 5      # max brands to process per run
 BRAND_LOG_DAYS     = 7      # days before same brand can repeat
 
 DISCUSSION_PLATFORMS = ["quora.com", "reddit.com", "linkedin.com"]
+
+# Block these URL patterns — pages and profiles, not discussions
+BLOCKED_URL_PATTERNS = [
+    "linkedin.com/company/",
+    "linkedin.com/in/",
+    "linkedin.com/showcase/",
+    "linkedin.com/pulse/",
+    "linkedin.com/news/",
+    "/jobs", "/life",
+    "reddit.com/r/",  # subreddit homepage — not a thread
+]
+
+def is_discussion_url(url: str) -> bool:
+    """Return True only if URL is an actual discussion thread, not a page or profile."""
+    url_lower = url.lower()
+    for pattern in BLOCKED_URL_PATTERNS:
+        if pattern in url_lower:
+            return False
+    # Reddit must be a specific post (contains /comments/)
+    if "reddit.com" in url_lower and "/comments/" not in url_lower:
+        return False
+    # LinkedIn must be a post (contains /posts/)
+    if "linkedin.com" in url_lower and "/posts/" not in url_lower:
+        return False
+    return True
 
 NEWS_SOURCES = [
     # Global
@@ -124,7 +146,51 @@ def mark_brand_drafted(brand: str, log: dict) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Tavily search — single function used everywhere
+# Brave Search — for finding discussion threads (freshness-aware)
+# ---------------------------------------------------------------------------
+
+def brave_search(
+    query: str,
+    freshness: str = "pw",   # pw=past week, pm=past month
+    max_results: int = 5,
+) -> list[dict]:
+    """Search using Brave API. Returns discussion-quality results."""
+    if not BRAVE_API_KEY:
+        return []
+    try:
+        resp = requests.get(
+            "https://api.search.brave.com/res/v1/web/search",
+            headers={
+                "Accept": "application/json",
+                "Accept-Encoding": "gzip",
+                "X-Subscription-Token": BRAVE_API_KEY,
+            },
+            params={
+                "q":         query,
+                "count":     max_results,
+                "freshness": freshness,
+                "search_lang": "en",
+            },
+            timeout=15,
+        )
+        resp.raise_for_status()
+        results = []
+        for r in resp.json().get("web", {}).get("results", []):
+            results.append({
+                "title":     r.get("title", ""),
+                "url":       r.get("url", ""),
+                "snippet":   r.get("description", ""),
+                "score":     1.0,
+                "published": r.get("page_age", ""),
+            })
+        return results
+    except Exception as e:
+        print(f"  [brave] Failed ({query[:40]}): {e}")
+        return []
+
+
+# ---------------------------------------------------------------------------
+# Tavily search — used for news only
 # ---------------------------------------------------------------------------
 
 def tavily_search(
