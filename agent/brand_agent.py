@@ -2,7 +2,7 @@
 Know Your Brand — Brand Awareness Agent v4
 ==========================================
 Stack:
-  - Apify actors for fresh thread discovery (Reddit, Quora, Twitter)
+  - Apify actors for fresh thread discovery (Reddit, Quora, LinkedIn, Twitter, YouTube)
   - 12-hour hard recency filter
   - Claude Haiku for drafting
   - Telegram for delivery
@@ -49,7 +49,7 @@ LOG_DIR.mkdir(parents=True, exist_ok=True)
 CANONICAL_URL  = "https://www.realmofbrands.com"
 MAX_BRANDS     = 5
 BRAND_LOG_DAYS = 7
-RECENCY_HOURS  = 12   # hard cutoff — nothing older than this
+RECENCY_HOURS  = 48   # hard cutoff — nothing older than this
 
 NEWS_SOURCES = [
     "techcrunch.com", "bloomberg.com", "reuters.com", "ft.com",
@@ -169,16 +169,20 @@ def search_brand_news() -> list[dict]:
 # Apify — thread discovery
 # ---------------------------------------------------------------------------
 
-def apify_run_actor(actor_id: str, input_data: dict, timeout_secs: int = 60) -> list[dict]:
+def apify_run_actor(actor_id: str, input_data: dict, timeout_secs: int = 90) -> list[dict]:
     """Run an Apify actor and return results."""
     if not APIFY_API_TOKEN:
         return []
     try:
-        # Start the actor run
+        # Start the actor run — body IS the input, timeout is a query param
         run_resp = requests.post(
             f"https://api.apify.com/v2/acts/{actor_id}/runs",
-            headers={"Authorization": f"Bearer {APIFY_API_TOKEN}"},
-            json={"input": input_data, "timeout": timeout_secs},
+            params={"timeout": timeout_secs},
+            headers={
+                "Authorization": f"Bearer {APIFY_API_TOKEN}",
+                "Content-Type": "application/json",
+            },
+            json=input_data,
             timeout=30,
         )
         run_resp.raise_for_status()
@@ -264,10 +268,9 @@ def search_quora(brand: str) -> list[dict]:
     results = apify_run_actor(
         "nFJndFXA5zjCTuudP",  # google-search-scraper
         {
-            "queries": f'site:quora.com "{brand}" {year}',
+            "queries": [f'site:quora.com "{brand}" {year}'],
             "maxPagesPerQuery": 1,
             "resultsPerPage": 5,
-            "dateRange": "lastWeek",
         }
     )
 
@@ -321,6 +324,79 @@ def search_linkedin(brand: str) -> list[dict]:
 
     fresh = [t for t in threads if is_fresh(t["published"])]
     return fresh[:5]
+
+
+def search_twitter(brand: str) -> list[dict]:
+    """Search Twitter for fresh conversations about this brand using Apify."""
+    results = apify_run_actor(
+        "nfp1fpt5gUlBwPcor",  # twitter-scraper-lite
+        {
+            "searchTerms": [
+                brand,
+                f"what is {brand}",
+                f"anyone use {brand}",
+            ],
+            "maxItems":  10,
+            "sort":      "Latest",
+        }
+    )
+
+    threads = []
+    for r in results:
+        url = r.get("url", r.get("tweetUrl", ""))
+        text = r.get("text", r.get("full_text", r.get("content", "")))
+        title = text[:100] if text else ""
+        published = r.get("createdAt", r.get("created_at", ""))
+        if isinstance(published, (int, float)):
+            published = datetime.datetime.utcfromtimestamp(published).isoformat()
+        if not url or not title:
+            continue
+        threads.append({
+            "title":     title,
+            "url":       url,
+            "snippet":   text[:200] if text else "",
+            "published": published,
+            "platform":  "twitter",
+            "score":     r.get("likeCount", r.get("favorite_count", 0)),
+            "comments":  r.get("replyCount", r.get("reply_count", 0)),
+        })
+
+    fresh = [t for t in threads if is_fresh(t["published"])]
+    fresh.sort(key=lambda x: x.get("comments", 0), reverse=True)
+    return fresh[:5]
+
+
+def search_youtube(brand: str) -> list[dict]:
+    """Find YouTube videos discussing this brand via Google site: search."""
+    year = datetime.date.today().year
+    results = apify_run_actor(
+        "nFJndFXA5zjCTuudP",  # google-search-scraper (reused)
+        {
+            "queries":          [f'site:youtube.com "{brand}" {year}'],
+            "maxPagesPerQuery": 1,
+            "resultsPerPage":   5,
+        }
+    )
+
+    threads = []
+    for r in results:
+        organic = r.get("organicResults", [])
+        for item in organic:
+            url = item.get("url", "")
+            title = item.get("title", "")
+            if "youtube.com/watch" not in url or not title:
+                continue
+            threads.append({
+                "title":     title,
+                "url":       url,
+                "snippet":   item.get("description", ""),
+                "published": "",
+                "platform":  "youtube",
+                "score":     0,
+                "comments":  0,
+            })
+
+    return threads[:3]
 
 
 # ---------------------------------------------------------------------------
@@ -478,7 +554,7 @@ def notify_result(brand: str, news_title: str, thread: dict, draft: str) -> None
 
 def run():
     print("=" * 60)
-    print("Know Your Brand — Brand Awareness Agent v4")
+    print("Know Your Brand — Brand Awareness Agent v5 (Reddit · Quora · LinkedIn · Twitter · YouTube)")
     print(f"Started: {datetime.datetime.now().isoformat()}")
     print(f"Recency filter: {RECENCY_HOURS} hours")
     print("=" * 60)
@@ -525,7 +601,15 @@ def run():
         linkedin_threads = search_linkedin(brand)
         print(f"    {len(linkedin_threads)} fresh threads")
 
-        all_threads = reddit_threads + quora_threads + linkedin_threads
+        print("  [twitter] Searching...")
+        twitter_threads = search_twitter(brand)
+        print(f"    {len(twitter_threads)} fresh threads")
+
+        print("  [youtube] Searching...")
+        youtube_threads = search_youtube(brand)
+        print(f"    {len(youtube_threads)} videos found")
+
+        all_threads = reddit_threads + quora_threads + linkedin_threads + twitter_threads + youtube_threads
 
         if not all_threads:
             print(f"  No fresh threads found for {brand} — skipping")
