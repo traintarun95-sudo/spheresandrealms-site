@@ -218,7 +218,7 @@ def apify_run_actor(actor_id: str, input_data: dict, timeout_secs: int = 60) -> 
 def search_reddit(brand: str, news_title: str) -> list[dict]:
     """Search Reddit for fresh threads about this brand using Apify."""
     results = apify_run_actor(
-        "trudax/reddit-scraper-lite",
+        "oAuCIx3ItNrs2okjQ",  # reddit-scraper-lite
         {
             "searches": [
                 f"{brand}",
@@ -262,7 +262,7 @@ def search_quora(brand: str) -> list[dict]:
     """Search Quora via Google site: operator using Apify Google Search actor."""
     year = datetime.date.today().year
     results = apify_run_actor(
-        "apify/google-search-scraper",
+        "nFJndFXA5zjCTuudP",  # google-search-scraper
         {
             "queries": f'site:quora.com "{brand}" {year}',
             "maxPagesPerQuery": 1,
@@ -295,10 +295,10 @@ def search_quora(brand: str) -> list[dict]:
 def search_linkedin(brand: str) -> list[dict]:
     """Search LinkedIn public company posts using Apify."""
     results = apify_run_actor(
-        "apify/linkedin-company-posts-scraper",
+        "kfiWbq3boy3dWKbiL",  # linkedin-post-search-scraper
         {
-            "companyUrls": [f"https://www.linkedin.com/search/results/content/?keywords={urllib.parse.quote(brand)}"],
-            "maxPosts": 5,
+            "keywords": brand,
+            "maxResults": 5,
         }
     )
 
