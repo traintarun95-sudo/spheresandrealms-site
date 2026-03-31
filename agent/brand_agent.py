@@ -1,0 +1,623 @@
+"""
+Know Your Brand — Brand Awareness Agent v6
+==========================================
+Stack:
+  - Apify reddit-scraper-lite (HTTP, no proxies) for Reddit
+  - Tavily for Quora + YouTube (free quota, zero Apify cost)
+  - Intent queries: review / worth it / alternative — buying mindset only
+  - Exclusion filter: job, hiring, valuation, funding, stocks — noise dropped
+  - Claude Haiku for drafting
+  - Telegram for delivery
+
+Flow:
+  1. Find brands in today's news
+  2. For each brand — search Reddit (Apify), Quora + YouTube (Tavily)
+  3. Drop threads about jobs/funding/corporate noise
+  4. Draft one response per thread — specific to the conversation
+  5. Send to Telegram: exact URL + draft
+  6. You post manually
+"""
+
+import os
+import json
+import time
+import datetime
+import textwrap
+import urllib.parse
+from pathlib import Path
+from typing import Optional
+
+import requests
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# ---------------------------------------------------------------------------
+# Config
+# ---------------------------------------------------------------------------
+
+ANTHROPIC_API_KEY  = os.getenv("ANTHROPIC_API_KEY", "")
+APIFY_API_TOKEN    = os.getenv("APIFY_API_TOKEN", "")
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHAT_ID   = os.getenv("TELEGRAM_CHAT_ID", "")
+KYB_API_URL        = os.getenv("KYB_API_URL", "https://know-your-brand-production.up.railway.app")
+TAVILY_API_KEY     = os.getenv("TAVILY_API_KEY", "")  # news + Quora + YouTube
+
+LOG_DIR   = Path(__file__).parent / "logs"
+BRAND_LOG = LOG_DIR / "brand_log.json"
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+
+CANONICAL_URL      = "https://www.realmofbrands.com"
+MAX_BRANDS         = 5
+BRAND_LOG_DAYS     = 7
+RECENCY_HOURS      = 48    # hard cutoff — nothing older than this
+APIFY_MEMORY_MB    = 256   # cap actor memory — forces HTTP-tier, 20x cheaper than browser
+APIFY_DAILY_BUDGET = 0.50  # stop the run if daily Apify spend exceeds this (USD)
+
+# Words that flag a thread as news/corporate noise rather than customer curiosity
+THREAD_EXCLUSIONS = {
+    "job", "jobs", "hiring", "hire", "recruiter", "salary", "compensation",
+    "valuation", "funding", "series a", "series b", "ipo", "acquisition",
+    "stocks", "shares", "investor", "venture", "career", "careers",
+}
+
+NEWS_SOURCES = [
+    "techcrunch.com", "bloomberg.com", "reuters.com", "ft.com",
+    "gulfnews.com", "arabianbusiness.com", "forbesmiddleeast.com",
+    "wamda.com", "techinasia.com", "thebridge.jp",
+    "bloomberglinea.com", "rappler.com", "businessdayng.com",
+]
+
+NEWS_QUERIES = [
+    "brand raises funding round",
+    "brand acquisition deal",
+    "brand enters market launch",
+    "brand rebrand new identity",
+    "startup brand series funding",
+    "brand expansion Middle East",
+    "D2C brand growth",
+    "new brand launch consumer",
+]
+
+
+# ---------------------------------------------------------------------------
+# Brand deduplication log
+# ---------------------------------------------------------------------------
+
+def load_brand_log() -> dict:
+    if not BRAND_LOG.exists():
+        return {}
+    try:
+        with open(BRAND_LOG) as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def save_brand_log(log: dict) -> None:
+    with open(BRAND_LOG, "w") as f:
+        json.dump(log, f, indent=2)
+
+
+def brand_recently_drafted(brand: str, log: dict) -> bool:
+    brand_key = brand.lower().strip()
+    if brand_key not in log:
+        return False
+    last_date = datetime.date.fromisoformat(log[brand_key])
+    return (datetime.date.today() - last_date).days < BRAND_LOG_DAYS
+
+
+def mark_brand_drafted(brand: str, log: dict) -> dict:
+    log[brand.lower().strip()] = datetime.date.today().isoformat()
+    return log
+
+
+# ---------------------------------------------------------------------------
+# Recency filter — hard 12-hour cutoff
+# ---------------------------------------------------------------------------
+
+def is_fresh(published: str) -> bool:
+    """Returns True if published date is within RECENCY_HOURS."""
+    if not published:
+        return True  # no date = assume fresh, let it through
+    for fmt in ["%Y-%m-%dT%H:%M:%S.%fZ", "%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%d"]:
+        try:
+            pub_dt = datetime.datetime.strptime(published[:19], fmt[:len(published[:19])])
+            age = datetime.datetime.utcnow() - pub_dt
+            return age.total_seconds() < RECENCY_HOURS * 3600
+        except Exception:
+            continue
+    return True
+
+
+# ---------------------------------------------------------------------------
+# Tavily — news search only
+# ---------------------------------------------------------------------------
+
+def tavily_search(query: str, domains: list = None, days: int = 1, max_results: int = 3) -> list[dict]:
+    if not TAVILY_API_KEY:
+        return []
+    payload = {
+        "api_key": TAVILY_API_KEY,
+        "query": query,
+        "search_depth": "basic",
+        "max_results": max_results,
+        "days": days,
+    }
+    if domains:
+        payload["include_domains"] = domains
+    try:
+        resp = requests.post("https://api.tavily.com/search", json=payload, timeout=15)
+        resp.raise_for_status()
+        return [
+            {
+                "title":     r.get("title", ""),
+                "url":       r.get("url", ""),
+                "snippet":   r.get("content", ""),
+                "published": r.get("published_date", ""),
+            }
+            for r in resp.json().get("results", [])
+        ]
+    except Exception as e:
+        print(f"  [tavily] Failed: {e}")
+        return []
+
+
+def search_brand_news() -> list[dict]:
+    all_stories = []
+    seen: set = set()
+    for query in NEWS_QUERIES:
+        for r in tavily_search(query, domains=NEWS_SOURCES, days=1, max_results=3):
+            if r["url"] not in seen:
+                seen.add(r["url"])
+                all_stories.append(r)
+        time.sleep(0.3)
+    return all_stories
+
+
+# ---------------------------------------------------------------------------
+# Apify — thread discovery
+# ---------------------------------------------------------------------------
+
+def apify_daily_spend() -> float:
+    """Return today's Apify usage in USD. Returns 0.0 on any error."""
+    if not APIFY_API_TOKEN:
+        return 0.0
+    try:
+        r = requests.get(
+            "https://api.apify.com/v2/users/me",
+            headers={"Authorization": f"Bearer {APIFY_API_TOKEN}"},
+            timeout=10,
+        )
+        data = r.json().get("data", {})
+        # monthlyUsage is in USD cents — Apify returns it in the plan block
+        # The real-time spend is in usageCycleUsageUsd if available
+        spend = data.get("usageCycleUsageUsd", data.get("monthlyUsage", 0))
+        return float(spend) if spend else 0.0
+    except Exception:
+        return 0.0
+
+
+def apify_run_actor(actor_id: str, input_data: dict, timeout_secs: int = 90) -> list[dict]:
+    """Run an Apify actor and return results."""
+    if not APIFY_API_TOKEN:
+        return []
+    try:
+        # Start the actor run — body IS the input, timeout + memory are query params
+        # memory=256MB forces HTTP/Cheerio tier — ~20x cheaper than browser actors
+        run_resp = requests.post(
+            f"https://api.apify.com/v2/acts/{actor_id}/runs",
+            params={"timeout": timeout_secs, "memory": APIFY_MEMORY_MB},
+            headers={
+                "Authorization": f"Bearer {APIFY_API_TOKEN}",
+                "Content-Type": "application/json",
+            },
+            json=input_data,
+            timeout=30,
+        )
+        run_resp.raise_for_status()
+        run_id = run_resp.json()["data"]["id"]
+
+        # Poll until finished
+        for _ in range(30):
+            time.sleep(3)
+            status_resp = requests.get(
+                f"https://api.apify.com/v2/actor-runs/{run_id}",
+                headers={"Authorization": f"Bearer {APIFY_API_TOKEN}"},
+                timeout=15,
+            )
+            status = status_resp.json()["data"]["status"]
+            if status in ("SUCCEEDED", "FAILED", "ABORTED", "TIMED-OUT"):
+                break
+
+        if status != "SUCCEEDED":
+            print(f"  [apify] Actor {actor_id} finished with status: {status}")
+            return []
+
+        # Get results
+        dataset_id = status_resp.json()["data"]["defaultDatasetId"]
+        results_resp = requests.get(
+            f"https://api.apify.com/v2/datasets/{dataset_id}/items",
+            headers={"Authorization": f"Bearer {APIFY_API_TOKEN}"},
+            params={"limit": 10},
+            timeout=15,
+        )
+        return results_resp.json()
+
+    except Exception as e:
+        print(f"  [apify] Failed for {actor_id}: {e}")
+        return []
+
+
+def is_noise_thread(thread: dict) -> bool:
+    """Return True if the thread is corporate/news noise, not customer curiosity."""
+    text = (thread.get("title", "") + " " + thread.get("snippet", "")).lower()
+    return any(word in text for word in THREAD_EXCLUSIONS)
+
+
+def search_reddit(brand: str, card: Optional[dict]) -> list[dict]:
+    """Search Reddit for curiosity/buying-intent threads about this brand.
+    Uses Apify reddit-scraper-lite (HTTP, no proxies — cheap).
+    Searches intent phrases, not just brand name.
+    """
+    # Intent queries — find people in research/buying mindset, not news readers
+    results = apify_run_actor(
+        "oAuCIx3ItNrs2okjQ",  # reddit-scraper-lite
+        {
+            "searches": [
+                f'"{brand}" review',
+                f'"{brand}" worth it',
+                f'"{brand}" alternative',
+            ],
+            "type":     "posts",
+            "sort":     "new",
+            "maxItems": 10,
+        }
+    )
+
+    brand_lower = brand.lower()
+    threads = []
+    for r in results:
+        published = r.get("createdAt", r.get("created_utc", ""))
+        if isinstance(published, (int, float)):
+            published = datetime.datetime.utcfromtimestamp(published).isoformat()
+        url = r.get("url", r.get("permalink", ""))
+        if url and not url.startswith("http"):
+            url = f"https://www.reddit.com{url}"
+        title = r.get("title", "")
+        if not url or not title:
+            continue
+        threads.append({
+            "title":     title,
+            "url":       url,
+            "snippet":   r.get("selftext", r.get("body", ""))[:200],
+            "published": published,
+            "platform":  "reddit",
+            "score":     r.get("score", r.get("ups", 0)),
+            "comments":  r.get("numComments", r.get("num_comments", 0)),
+        })
+
+    relevant = [
+        t for t in threads
+        if is_fresh(t["published"])
+        and (brand_lower in t["title"].lower() or brand_lower in t["snippet"].lower())
+        and not is_noise_thread(t)
+    ]
+    relevant.sort(key=lambda x: x.get("comments", 0), reverse=True)
+    return relevant[:5]
+
+
+def search_quora(brand: str, card: Optional[dict]) -> list[dict]:
+    """Search Quora via Tavily — zero Apify cost, no proxies."""
+    if not TAVILY_API_KEY:
+        return []
+    # Use what the brand sells to disambiguate generic names
+    # e.g. "Good Culture" → "Good Culture" cottage cheese
+    # e.g. "Guess" → "Guess" fashion accessories
+    sells = card.get("sells", "") if card else ""
+    if sells:
+        # Take first noun phrase (up to 4 words) from sells field
+        category = " ".join(sells.split()[:4])
+        query = f'"{brand}" {category}'
+    else:
+        query = f'"{brand}" review OR "what is" OR alternative'
+
+    results = tavily_search(
+        query=query,
+        domains=["quora.com"],
+        days=365,
+        max_results=5,
+    )
+
+    threads = []
+    for r in results:
+        url = r.get("url", "")
+        title = r.get("title", "")
+        if "quora.com" not in url or not title:
+            continue
+        t = {
+            "title":     title,
+            "url":       url,
+            "snippet":   r.get("snippet", ""),
+            "published": r.get("published", ""),
+            "platform":  "quora",
+            "score":     0,
+            "comments":  0,
+        }
+        if not is_noise_thread(t):
+            threads.append(t)
+
+    return threads[:5]
+
+
+def search_youtube(brand: str, card: Optional[dict]) -> list[dict]:
+    """Search YouTube via Tavily — zero Apify cost, no proxies."""
+    if not TAVILY_API_KEY:
+        return []
+    sells = card.get("sells", "") if card else ""
+    category = " ".join(sells.split()[:4]) if sells else ""
+    query = f'"{brand}" {category} review OR explained OR "what is"' if category else f'"{brand}" review OR explained OR "what is"'
+
+    results = tavily_search(
+        query=query,
+        domains=["youtube.com"],
+        days=365,
+        max_results=3,
+    )
+
+    threads = []
+    for r in results:
+        url = r.get("url", "")
+        title = r.get("title", "")
+        if "youtube.com/watch" not in url or not title:
+            continue
+        t = {
+            "title":     title,
+            "url":       url,
+            "snippet":   r.get("snippet", ""),
+            "published": r.get("published", ""),
+            "platform":  "youtube",
+            "score":     0,
+            "comments":  0,
+        }
+        if not is_noise_thread(t):
+            threads.append(t)
+
+    return threads[:3]
+
+
+# ---------------------------------------------------------------------------
+# Brand extraction from news
+# ---------------------------------------------------------------------------
+
+def extract_brand_from_story(story: dict) -> Optional[str]:
+    if not ANTHROPIC_API_KEY:
+        return None
+    prompt = (
+        "Extract the PRIMARY brand name from this news story.\n"
+        "Return ONLY the brand name — nothing else. No explanation.\n"
+        "If no clear brand name exists, return: NONE\n\n"
+        f"Title: {story['title']}\n"
+        f"Snippet: {story['snippet']}"
+    )
+    try:
+        resp = requests.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "x-api-key": ANTHROPIC_API_KEY,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json",
+            },
+            json={
+                "model":      "claude-haiku-4-5-20251001",
+                "max_tokens": 30,
+                "messages":   [{"role": "user", "content": prompt}],
+            },
+            timeout=15,
+        )
+        brand = resp.json()["content"][0]["text"].strip()
+        return None if brand.upper() == "NONE" else brand
+    except Exception:
+        return None
+
+
+# ---------------------------------------------------------------------------
+# KYB API
+# ---------------------------------------------------------------------------
+
+def get_brand_card(brand: str) -> Optional[dict]:
+    try:
+        resp = requests.post(
+            f"{KYB_API_URL}/api/brand",
+            json={"brand": brand},
+            headers={"X-Agent": "brand-agent"},
+            timeout=20,
+        )
+        return resp.json() if resp.status_code == 200 else None
+    except Exception as e:
+        print(f"  [card] Failed for {brand}: {e}")
+        return None
+
+
+def brand_card_url(brand: str) -> str:
+    return f"{CANONICAL_URL}/search.html?brand={urllib.parse.quote_plus(brand)}"
+
+
+# ---------------------------------------------------------------------------
+# Draft generation
+# ---------------------------------------------------------------------------
+
+def generate_draft(brand: str, thread: dict, card: Optional[dict]) -> str:
+    card_url = brand_card_url(brand)
+
+    if not ANTHROPIC_API_KEY:
+        return f"Here is a quick snapshot of what {brand} is.\nFor the full card — {card_url}"
+
+    what_is = card.get("what_is", "") if card and card.get("type") == "card" else ""
+    platform = thread.get("platform", "quora")
+
+    prompt = textwrap.dedent(f"""
+        Thread: {thread['title']}
+        Platform: {platform}
+        Brand: {brand}
+        What {brand} is: {what_is}
+
+        Write one sentence — specific to this thread, for the person who just heard this brand name and doesn't know what it is.
+        Plain, factual, no opinion. Orient them simply.
+        Then on the next line write exactly: For the full card — {card_url}
+
+        Two lines total. Nothing else.
+    """).strip()
+
+    try:
+        resp = requests.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "x-api-key": ANTHROPIC_API_KEY,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json",
+            },
+            json={
+                "model":      "claude-haiku-4-5-20251001",
+                "max_tokens": 100,
+                "messages":   [{"role": "user", "content": prompt}],
+            },
+            timeout=20,
+        )
+        return resp.json()["content"][0]["text"].strip()
+    except Exception:
+        return f"Here is a quick snapshot of what {brand} is.\nFor the full card — {card_url}"
+
+
+# ---------------------------------------------------------------------------
+# Telegram
+# ---------------------------------------------------------------------------
+
+def send_telegram(message: str) -> bool:
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        return False
+    try:
+        resp = requests.post(
+            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
+            json={
+                "chat_id":                  TELEGRAM_CHAT_ID,
+                "text":                     message,
+                "parse_mode":               "HTML",
+                "disable_web_page_preview": True,
+            },
+            timeout=10,
+        )
+        return resp.status_code == 200
+    except Exception:
+        return False
+
+
+def notify_result(brand: str, news_title: str, thread: dict, draft: str) -> None:
+    platform = thread.get("platform", "").upper()
+    comments = thread.get("comments", 0)
+    published = thread.get("published", "")[:16].replace("T", " ")
+    engagement = f"{comments} comments" if comments else ""
+    meta = " · ".join(filter(None, [published, engagement]))
+
+    message = (
+        f"<b>{brand}</b>\n"
+        f"📰 {news_title}\n"
+        f"───────────────\n"
+        f"<b>{platform}</b>  {meta}\n"
+        f"{thread['url']}\n"
+        f"───────────────\n"
+        f"{draft}"
+    )
+
+    sent = send_telegram(message)
+    if not sent:
+        print(f"\n  [{platform}] {thread['url']}")
+        print(f"  {draft}")
+
+
+# ---------------------------------------------------------------------------
+# Main run
+# ---------------------------------------------------------------------------
+
+def run():
+    print("=" * 60)
+    print("Know Your Brand — Brand Awareness Agent v6 (Reddit · Quora · YouTube)")
+    print(f"Started: {datetime.datetime.now().isoformat()}")
+    print(f"Recency filter: {RECENCY_HOURS} hours")
+    print("=" * 60)
+
+    # Spending guard — stop before burning the free tier
+    spend = apify_daily_spend()
+    print(f"Apify usage this cycle: ${spend:.3f} / ${APIFY_DAILY_BUDGET:.2f} daily cap")
+    if spend >= APIFY_DAILY_BUDGET:
+        print(f"[abort] Apify spend ${spend:.3f} >= daily cap ${APIFY_DAILY_BUDGET:.2f}. Stopping.")
+        return
+
+    brand_log = load_brand_log()
+
+    print("\n[news] Searching brand news...")
+    stories = search_brand_news()
+    print(f"  {len(stories)} stories found")
+
+    brands_processed = 0
+
+    for story in stories:
+        if brands_processed >= MAX_BRANDS:
+            break
+
+        brand = extract_brand_from_story(story)
+        if not brand:
+            continue
+
+        if brand_recently_drafted(brand, brand_log):
+            print(f"  [skip] {brand} — drafted within {BRAND_LOG_DAYS} days")
+            continue
+
+        # Validate card exists
+        card = get_brand_card(brand)
+        if not card or card.get("type") != "card":
+            print(f"  [skip] {brand} — no clean card")
+            continue
+
+        print(f"\n[brand] {brand}")
+        print(f"  News: {story['title'][:80]}")
+
+        # Search all platforms
+        # Reddit: Apify HTTP scraper (cheap, no proxies)
+        # Quora + YouTube: Tavily (free quota, zero Apify cost)
+        print("  [reddit] Searching...")
+        reddit_threads = search_reddit(brand, card)
+        print(f"    {len(reddit_threads)} threads")
+
+        print("  [quora] Searching...")
+        quora_threads = search_quora(brand, card)
+        print(f"    {len(quora_threads)} threads")
+
+        print("  [youtube] Searching...")
+        youtube_threads = search_youtube(brand, card)
+        print(f"    {len(youtube_threads)} videos found")
+
+        all_threads = reddit_threads + quora_threads + youtube_threads
+
+        if not all_threads:
+            print(f"  No fresh threads found for {brand} — skipping")
+            continue
+
+        sent = 0
+        for thread in all_threads:
+            draft = generate_draft(brand, thread, card)
+            notify_result(brand, story["title"], thread, draft)
+            print(f"  → {thread['platform'].upper()} — {thread['url'][:60]}...")
+            sent += 1
+            time.sleep(0.3)
+
+        print(f"  {sent} results sent to Telegram")
+        brand_log = mark_brand_drafted(brand, brand_log)
+        brands_processed += 1
+
+    save_brand_log(brand_log)
+    print(f"\n[done] {brands_processed} brands processed.")
+
+
+if __name__ == "__main__":
+    run()
