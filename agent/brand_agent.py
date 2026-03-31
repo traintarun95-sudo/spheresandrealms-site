@@ -243,13 +243,14 @@ def apify_run_actor(actor_id: str, input_data: dict, timeout_secs: int = 90) -> 
 
 def search_reddit(brand: str, news_title: str) -> list[dict]:
     """Search Reddit for fresh threads about this brand using Apify."""
+    # Use quoted brand name to avoid generic-word pollution (e.g. "Guess")
     results = apify_run_actor(
         "oAuCIx3ItNrs2okjQ",  # reddit-scraper-lite
         {
             "searches": [
-                f"{brand}",
-                f"what is {brand}",
-                f"is {brand} legit",
+                f'"{brand}" brand',
+                f'"{brand}" review',
+                f'"{brand}" legit',
             ],
             "type": "posts",
             "sort": "new",
@@ -278,10 +279,15 @@ def search_reddit(brand: str, news_title: str) -> list[dict]:
             "comments":  r.get("numComments", r.get("num_comments", 0)),
         })
 
-    # Filter by recency and sort by engagement
-    fresh = [t for t in threads if is_fresh(t["published"])]
-    fresh.sort(key=lambda x: x.get("comments", 0), reverse=True)
-    return fresh[:5]
+    # Filter: must be fresh AND brand name must appear in title or snippet
+    brand_lower = brand.lower()
+    relevant = [
+        t for t in threads
+        if is_fresh(t["published"])
+        and (brand_lower in t["title"].lower() or brand_lower in t["snippet"].lower())
+    ]
+    relevant.sort(key=lambda x: x.get("comments", 0), reverse=True)
+    return relevant[:5]
 
 
 def search_quora(brand: str) -> list[dict]:
@@ -290,7 +296,7 @@ def search_quora(brand: str) -> list[dict]:
     results = apify_run_actor(
         "nFJndFXA5zjCTuudP",  # google-search-scraper
         {
-            "queries": [f'site:quora.com "{brand}" {year}'],
+            "queries": f'site:quora.com "{brand}" {year}',
             "maxPagesPerQuery": 1,
             "resultsPerPage": 5,
         }
@@ -394,7 +400,7 @@ def search_youtube(brand: str) -> list[dict]:
     results = apify_run_actor(
         "nFJndFXA5zjCTuudP",  # google-search-scraper (reused)
         {
-            "queries":          [f'site:youtube.com "{brand}" {year}'],
+            "queries":          f'site:youtube.com "{brand}" {year}',
             "maxPagesPerQuery": 1,
             "resultsPerPage":   5,
         }
