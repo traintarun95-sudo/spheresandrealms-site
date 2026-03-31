@@ -1,18 +1,19 @@
 """
-Know Your Brand — Brand Awareness Agent v4
+Know Your Brand — Brand Awareness Agent v6
 ==========================================
 Stack:
-  - Apify actors for fresh thread discovery (Reddit, Quora, LinkedIn, Twitter, YouTube)
-  - 12-hour hard recency filter
+  - Apify reddit-scraper-lite (HTTP, no proxies) for Reddit
+  - Tavily for Quora + YouTube (free quota, zero Apify cost)
+  - Intent queries: review / worth it / alternative — buying mindset only
+  - Exclusion filter: job, hiring, valuation, funding, stocks — noise dropped
   - Claude Haiku for drafting
   - Telegram for delivery
-  - Railway cron for scheduling
 
 Flow:
   1. Find brands in today's news
-  2. For each brand — search Reddit, Quora, Twitter for fresh threads
-  3. Hard 12-hour filter — drop anything older
-  4. Draft response specific to each thread
+  2. For each brand — search Reddit (Apify), Quora + YouTube (Tavily)
+  3. Drop threads about jobs/funding/corporate noise
+  4. Draft one response per thread — specific to the conversation
   5. Send to Telegram: exact URL + draft
   6. You post manually
 """
@@ -40,7 +41,7 @@ APIFY_API_TOKEN    = os.getenv("APIFY_API_TOKEN", "")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID   = os.getenv("TELEGRAM_CHAT_ID", "")
 KYB_API_URL        = os.getenv("KYB_API_URL", "https://know-your-brand-production.up.railway.app")
-TAVILY_API_KEY     = os.getenv("TAVILY_API_KEY", "")  # kept for news search only
+TAVILY_API_KEY     = os.getenv("TAVILY_API_KEY", "")  # news + Quora + YouTube
 
 LOG_DIR   = Path(__file__).parent / "logs"
 BRAND_LOG = LOG_DIR / "brand_log.json"
@@ -52,6 +53,13 @@ BRAND_LOG_DAYS     = 7
 RECENCY_HOURS      = 48    # hard cutoff — nothing older than this
 APIFY_MEMORY_MB    = 256   # cap actor memory — forces HTTP-tier, 20x cheaper than browser
 APIFY_DAILY_BUDGET = 0.50  # stop the run if daily Apify spend exceeds this (USD)
+
+# Words that flag a thread as news/corporate noise rather than customer curiosity
+THREAD_EXCLUSIONS = {
+    "job", "jobs", "hiring", "hire", "recruiter", "salary", "compensation",
+    "valuation", "funding", "series a", "series b", "ipo", "acquisition",
+    "stocks", "shares", "investor", "venture", "career", "careers",
+}
 
 NEWS_SOURCES = [
     "techcrunch.com", "bloomberg.com", "reuters.com", "ft.com",
@@ -241,23 +249,33 @@ def apify_run_actor(actor_id: str, input_data: dict, timeout_secs: int = 90) -> 
         return []
 
 
-def search_reddit(brand: str, news_title: str) -> list[dict]:
-    """Search Reddit for fresh threads about this brand using Apify."""
-    # Use quoted brand name to avoid generic-word pollution (e.g. "Guess")
+def is_noise_thread(thread: dict) -> bool:
+    """Return True if the thread is corporate/news noise, not customer curiosity."""
+    text = (thread.get("title", "") + " " + thread.get("snippet", "")).lower()
+    return any(word in text for word in THREAD_EXCLUSIONS)
+
+
+def search_reddit(brand: str, card: Optional[dict]) -> list[dict]:
+    """Search Reddit for curiosity/buying-intent threads about this brand.
+    Uses Apify reddit-scraper-lite (HTTP, no proxies — cheap).
+    Searches intent phrases, not just brand name.
+    """
+    # Intent queries — find people in research/buying mindset, not news readers
     results = apify_run_actor(
         "oAuCIx3ItNrs2okjQ",  # reddit-scraper-lite
         {
             "searches": [
-                f'"{brand}" brand',
                 f'"{brand}" review',
-                f'"{brand}" legit',
+                f'"{brand}" worth it',
+                f'"{brand}" alternative',
             ],
-            "type": "posts",
-            "sort": "new",
+            "type":     "posts",
+            "sort":     "new",
             "maxItems": 10,
         }
     )
 
+    brand_lower = brand.lower()
     threads = []
     for r in results:
         published = r.get("createdAt", r.get("created_utc", ""))
@@ -279,150 +297,91 @@ def search_reddit(brand: str, news_title: str) -> list[dict]:
             "comments":  r.get("numComments", r.get("num_comments", 0)),
         })
 
-    # Filter: must be fresh AND brand name must appear in title or snippet
-    brand_lower = brand.lower()
     relevant = [
         t for t in threads
         if is_fresh(t["published"])
         and (brand_lower in t["title"].lower() or brand_lower in t["snippet"].lower())
+        and not is_noise_thread(t)
     ]
     relevant.sort(key=lambda x: x.get("comments", 0), reverse=True)
     return relevant[:5]
 
 
-def search_quora(brand: str) -> list[dict]:
-    """Search Quora via Google site: operator using Apify Google Search actor."""
-    year = datetime.date.today().year
-    results = apify_run_actor(
-        "nFJndFXA5zjCTuudP",  # google-search-scraper
-        {
-            "queries": f'site:quora.com "{brand}" {year}',
-            "maxPagesPerQuery": 1,
-            "resultsPerPage": 5,
-        }
+def search_quora(brand: str, card: Optional[dict]) -> list[dict]:
+    """Search Quora via Tavily — zero Apify cost, no proxies."""
+    if not TAVILY_API_KEY:
+        return []
+    # Use what the brand sells to disambiguate generic names
+    # e.g. "Good Culture" → "Good Culture" cottage cheese
+    # e.g. "Guess" → "Guess" fashion accessories
+    sells = card.get("sells", "") if card else ""
+    if sells:
+        # Take first noun phrase (up to 4 words) from sells field
+        category = " ".join(sells.split()[:4])
+        query = f'"{brand}" {category}'
+    else:
+        query = f'"{brand}" review OR "what is" OR alternative'
+
+    results = tavily_search(
+        query=query,
+        domains=["quora.com"],
+        days=365,
+        max_results=5,
     )
 
     threads = []
     for r in results:
-        organic = r.get("organicResults", [])
-        for item in organic:
-            url = item.get("url", "")
-            title = item.get("title", "")
-            if "quora.com" not in url or not title:
-                continue
-            threads.append({
-                "title":     title,
-                "url":       url,
-                "snippet":   item.get("description", ""),
-                "published": "",
-                "platform":  "quora",
-                "score":     0,
-                "comments":  0,
-            })
+        url = r.get("url", "")
+        title = r.get("title", "")
+        if "quora.com" not in url or not title:
+            continue
+        t = {
+            "title":     title,
+            "url":       url,
+            "snippet":   r.get("snippet", ""),
+            "published": r.get("published", ""),
+            "platform":  "quora",
+            "score":     0,
+            "comments":  0,
+        }
+        if not is_noise_thread(t):
+            threads.append(t)
 
     return threads[:5]
 
 
-def search_linkedin(brand: str) -> list[dict]:
-    """Search LinkedIn public company posts using Apify."""
-    results = apify_run_actor(
-        "kfiWbq3boy3dWKbiL",  # linkedin-post-search-scraper
-        {
-            "keywords": brand,
-            "maxResults": 5,
-        }
+def search_youtube(brand: str, card: Optional[dict]) -> list[dict]:
+    """Search YouTube via Tavily — zero Apify cost, no proxies."""
+    if not TAVILY_API_KEY:
+        return []
+    sells = card.get("sells", "") if card else ""
+    category = " ".join(sells.split()[:4]) if sells else ""
+    query = f'"{brand}" {category} review OR explained OR "what is"' if category else f'"{brand}" review OR explained OR "what is"'
+
+    results = tavily_search(
+        query=query,
+        domains=["youtube.com"],
+        days=365,
+        max_results=3,
     )
 
     threads = []
     for r in results:
-        url = r.get("postUrl", r.get("url", ""))
-        title = r.get("text", r.get("content", ""))[:100]
-        published = r.get("postedAt", r.get("date", ""))
-        if not url or not title:
+        url = r.get("url", "")
+        title = r.get("title", "")
+        if "youtube.com/watch" not in url or not title:
             continue
-        threads.append({
+        t = {
             "title":     title,
             "url":       url,
-            "snippet":   r.get("text", "")[:200],
-            "published": published,
-            "platform":  "linkedin",
+            "snippet":   r.get("snippet", ""),
+            "published": r.get("published", ""),
+            "platform":  "youtube",
             "score":     0,
-            "comments":  r.get("commentsCount", 0),
-        })
-
-    fresh = [t for t in threads if is_fresh(t["published"])]
-    return fresh[:5]
-
-
-def search_twitter(brand: str) -> list[dict]:
-    """Search Twitter for fresh conversations about this brand using Apify."""
-    results = apify_run_actor(
-        "nfp1fpt5gUlBwPcor",  # twitter-scraper-lite
-        {
-            "searchTerms": [
-                brand,
-                f"what is {brand}",
-                f"anyone use {brand}",
-            ],
-            "maxItems":  10,
-            "sort":      "Latest",
+            "comments":  0,
         }
-    )
-
-    threads = []
-    for r in results:
-        url = r.get("url", r.get("tweetUrl", ""))
-        text = r.get("text", r.get("full_text", r.get("content", "")))
-        title = text[:100] if text else ""
-        published = r.get("createdAt", r.get("created_at", ""))
-        if isinstance(published, (int, float)):
-            published = datetime.datetime.utcfromtimestamp(published).isoformat()
-        if not url or not title:
-            continue
-        threads.append({
-            "title":     title,
-            "url":       url,
-            "snippet":   text[:200] if text else "",
-            "published": published,
-            "platform":  "twitter",
-            "score":     r.get("likeCount", r.get("favorite_count", 0)),
-            "comments":  r.get("replyCount", r.get("reply_count", 0)),
-        })
-
-    fresh = [t for t in threads if is_fresh(t["published"])]
-    fresh.sort(key=lambda x: x.get("comments", 0), reverse=True)
-    return fresh[:5]
-
-
-def search_youtube(brand: str) -> list[dict]:
-    """Find YouTube videos discussing this brand via Google site: search."""
-    year = datetime.date.today().year
-    results = apify_run_actor(
-        "nFJndFXA5zjCTuudP",  # google-search-scraper (reused)
-        {
-            "queries":          f'site:youtube.com "{brand}" {year}',
-            "maxPagesPerQuery": 1,
-            "resultsPerPage":   5,
-        }
-    )
-
-    threads = []
-    for r in results:
-        organic = r.get("organicResults", [])
-        for item in organic:
-            url = item.get("url", "")
-            title = item.get("title", "")
-            if "youtube.com/watch" not in url or not title:
-                continue
-            threads.append({
-                "title":     title,
-                "url":       url,
-                "snippet":   item.get("description", ""),
-                "published": "",
-                "platform":  "youtube",
-                "score":     0,
-                "comments":  0,
-            })
+        if not is_noise_thread(t):
+            threads.append(t)
 
     return threads[:3]
 
@@ -582,7 +541,7 @@ def notify_result(brand: str, news_title: str, thread: dict, draft: str) -> None
 
 def run():
     print("=" * 60)
-    print("Know Your Brand — Brand Awareness Agent v5 (Reddit · Quora · LinkedIn · Twitter · YouTube)")
+    print("Know Your Brand — Brand Awareness Agent v6 (Reddit · Quora · YouTube)")
     print(f"Started: {datetime.datetime.now().isoformat()}")
     print(f"Recency filter: {RECENCY_HOURS} hours")
     print("=" * 60)
@@ -624,27 +583,21 @@ def run():
         print(f"  News: {story['title'][:80]}")
 
         # Search all platforms
+        # Reddit: Apify HTTP scraper (cheap, no proxies)
+        # Quora + YouTube: Tavily (free quota, zero Apify cost)
         print("  [reddit] Searching...")
-        reddit_threads = search_reddit(brand, story["title"])
-        print(f"    {len(reddit_threads)} fresh threads")
+        reddit_threads = search_reddit(brand, card)
+        print(f"    {len(reddit_threads)} threads")
 
         print("  [quora] Searching...")
-        quora_threads = search_quora(brand)
+        quora_threads = search_quora(brand, card)
         print(f"    {len(quora_threads)} threads")
 
-        print("  [linkedin] Searching...")
-        linkedin_threads = search_linkedin(brand)
-        print(f"    {len(linkedin_threads)} fresh threads")
-
-        print("  [twitter] Searching...")
-        twitter_threads = search_twitter(brand)
-        print(f"    {len(twitter_threads)} fresh threads")
-
         print("  [youtube] Searching...")
-        youtube_threads = search_youtube(brand)
+        youtube_threads = search_youtube(brand, card)
         print(f"    {len(youtube_threads)} videos found")
 
-        all_threads = reddit_threads + quora_threads + linkedin_threads + twitter_threads + youtube_threads
+        all_threads = reddit_threads + quora_threads + youtube_threads
 
         if not all_threads:
             print(f"  No fresh threads found for {brand} — skipping")
