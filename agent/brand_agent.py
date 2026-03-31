@@ -46,10 +46,12 @@ LOG_DIR   = Path(__file__).parent / "logs"
 BRAND_LOG = LOG_DIR / "brand_log.json"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
-CANONICAL_URL  = "https://www.realmofbrands.com"
-MAX_BRANDS     = 5
-BRAND_LOG_DAYS = 7
-RECENCY_HOURS  = 48   # hard cutoff — nothing older than this
+CANONICAL_URL      = "https://www.realmofbrands.com"
+MAX_BRANDS         = 5
+BRAND_LOG_DAYS     = 7
+RECENCY_HOURS      = 48    # hard cutoff — nothing older than this
+APIFY_MEMORY_MB    = 256   # cap actor memory — forces HTTP-tier, 20x cheaper than browser
+APIFY_DAILY_BUDGET = 0.50  # stop the run if daily Apify spend exceeds this (USD)
 
 NEWS_SOURCES = [
     "techcrunch.com", "bloomberg.com", "reuters.com", "ft.com",
@@ -169,15 +171,35 @@ def search_brand_news() -> list[dict]:
 # Apify — thread discovery
 # ---------------------------------------------------------------------------
 
+def apify_daily_spend() -> float:
+    """Return today's Apify usage in USD. Returns 0.0 on any error."""
+    if not APIFY_API_TOKEN:
+        return 0.0
+    try:
+        r = requests.get(
+            "https://api.apify.com/v2/users/me",
+            headers={"Authorization": f"Bearer {APIFY_API_TOKEN}"},
+            timeout=10,
+        )
+        data = r.json().get("data", {})
+        # monthlyUsage is in USD cents — Apify returns it in the plan block
+        # The real-time spend is in usageCycleUsageUsd if available
+        spend = data.get("usageCycleUsageUsd", data.get("monthlyUsage", 0))
+        return float(spend) if spend else 0.0
+    except Exception:
+        return 0.0
+
+
 def apify_run_actor(actor_id: str, input_data: dict, timeout_secs: int = 90) -> list[dict]:
     """Run an Apify actor and return results."""
     if not APIFY_API_TOKEN:
         return []
     try:
-        # Start the actor run — body IS the input, timeout is a query param
+        # Start the actor run — body IS the input, timeout + memory are query params
+        # memory=256MB forces HTTP/Cheerio tier — ~20x cheaper than browser actors
         run_resp = requests.post(
             f"https://api.apify.com/v2/acts/{actor_id}/runs",
-            params={"timeout": timeout_secs},
+            params={"timeout": timeout_secs, "memory": APIFY_MEMORY_MB},
             headers={
                 "Authorization": f"Bearer {APIFY_API_TOKEN}",
                 "Content-Type": "application/json",
@@ -558,6 +580,13 @@ def run():
     print(f"Started: {datetime.datetime.now().isoformat()}")
     print(f"Recency filter: {RECENCY_HOURS} hours")
     print("=" * 60)
+
+    # Spending guard — stop before burning the free tier
+    spend = apify_daily_spend()
+    print(f"Apify usage this cycle: ${spend:.3f} / ${APIFY_DAILY_BUDGET:.2f} daily cap")
+    if spend >= APIFY_DAILY_BUDGET:
+        print(f"[abort] Apify spend ${spend:.3f} >= daily cap ${APIFY_DAILY_BUDGET:.2f}. Stopping.")
+        return
 
     brand_log = load_brand_log()
 
